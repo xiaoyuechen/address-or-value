@@ -1,0 +1,98 @@
+\documentclass[a4paper]{article}
+\usepackage{cite}
+\usepackage{listings}
+\lstset{basicstyle=\ttfamily}
+\usepackage{booktabs}
+
+\title{Distinguish Between Memory Addresses and Data\\Thesis Specification}
+
+\author{Xiaoyue Chen \and Stefanos Kaxiras}
+
+\begin{document}
+\maketitle
+
+\section{Background}
+% Here you describe in what context your thesis is to be done. What
+% prerequisites are valid, what is the goal of the project from the
+% supervisors point of view, what is available and has been done
+% before, under what circumstances should the work be done.
+Most modern computers do not distinguish between memory addresses and
+data. Any content in the memory could be used directly or indirectly
+as an address to access the memory. Even if the content is just data
+(e.g., a password hash), it could still be used to reference the
+memory (e.g., as an array index). While this property makes the
+architecture more flexible, it also raises security concerns. By
+exploiting this property, attackers could break memory isolation
+between processes and leak confidential information.
+
+\subsection{Spectre and Meltdown}
+Spectre \cite{kocher2019spectre} and Meltdown \cite{lipp2018meltdown}
+relies on using secret data to reference the memory. In both attacks,
+attackers first access the secret data which will cause invalid
+address accessing exception. Due to modern processors' out-of-order
+execution and speculative execution optimisations, transient
+instructions whose architectural effects will not be committed are
+also executed.
+
+In the transient instructions, attackers access the memory by using
+the secret data as memory addresses. Although the transient
+instructions will have no architectural effects, the memory accesses
+would leave microarchitectural side effects, i.e., the referenced
+memory is stored in the cache. Finally, attackers could use a cache
+side channel to observe the side effects and read the secret data by
+exploiting timing differences.
+
+\subsection{Effects of memory addresses/data distinction}
+The attacks introduced above could be mitigated if memory addresses
+and data are distinguished. Using data as memory addresses could be
+forbidden. As a result, the transient instructions in the attacks
+would leave no microarchitectural side effects. This will improve the
+security of computer systems.
+
+\subsection{Goal}
+Explore the techniques to distinguish between memory address and data
+at different levels, e.g., microarchitectural level, assembly level,
+compiler level.
+
+\section{Description of the task}
+
+\section{Methods}
+
+\section{Relevant courses}
+\begin{itemize}
+\item Advanced Computer Architecture
+\item Computer Architecture I
+\item Compiler Design I
+\item Operating Systems I
+\item Secure Computer Systems I
+\end{itemize}
+
+\section{Delimitations}
+
+\section{Time plan}
+Xiaoyue Chen will be working full-time on the project for the entire
+spring term in 2022. The detailed time plan follows table
+\ref{tab:timeplan}.
+\begin{table}[h]
+  \centering
+  \begin{tabular}{ll}
+    \toprule
+    Date &  Plan \\
+    \midrule
+    12 Jan & Project starts \\
+    12 Jun & Project ends \\
+    \bottomrule
+  \end{tabular}
+  \caption{The time plan for the project}
+  \label{tab:timeplan}
+\end{table}
+
+
+\bibliographystyle{IEEEtran} \bibliography{references}
+
+\end{document}
+
+%%% Local Variables:
+%%% mode: latex
+%%% TeX-master: t
+%%% End:

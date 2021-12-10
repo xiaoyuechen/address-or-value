@@ -3,10 +3,12 @@
 \usepackage{listings}
 \lstset{basicstyle=\ttfamily}
 \usepackage{booktabs}
+\usepackage{hyperref}
+\usepackage{pdflscape}
 
 \title{Distinguish Between Memory Addresses and Data\\Thesis Specification}
 
-\author{Xiaoyue Chen \and Stefanos Kaxiras}
+\author{Xiaoyue Chen}
 
 \begin{document}
 \maketitle
@@ -42,6 +44,14 @@ memory is stored in the cache. Finally, attackers could use a cache
 side channel to observe the side effects and read the secret data by
 exploiting timing differences.
 
+\subsection{Speculative taint tracking (STT)}
+Speculative taint tracking (STT) introduces a framework to protect
+speculatively accessed data from speculative execution
+attacks~\cite{yu2019speculative}. By blocking side channels and using
+taint/untaint procedure to wake instructions up early, it disables
+protection on previously protected data, as soon as doing so is safe.
+STT is the current state of art novel protection framework.
+
 \subsection{Effects of memory addresses/data distinction}
 The attacks introduced above could be mitigated if memory addresses
 and data are distinguished. Using data as memory addresses could be
@@ -50,13 +60,22 @@ would leave no microarchitectural side effects. This will improve the
 security of computer systems.
 
 \subsection{Goal}
-Explore the techniques to distinguish between memory address and data
-at different levels, e.g., microarchitectural level, assembly level,
-compiler level.
+The goal is to develop a tool to distinguish between memory address
+and data based on the ideas from STT. The tool should dynamically mark
+memory regions of programs as memory address or data. The tool should
+also be able to collect data that characterize memory access of
+programs, e.g., number of untaits.
 
 \section{Description of the task}
+Develop a tool to distinguish memory address from data. Characterize
+memory access patterns of programs.
 
 \section{Methods}
+Use Intel pin tool to dynamically inject and replace instructions of
+programs to perform dynamic information flow tracking (DIFT).
+
+Tracking the number of untaints of programs over their lifetime based
+on STT to characterize memory access of programs.
 
 \section{Relevant courses}
 \begin{itemize}
@@ -68,24 +87,43 @@ compiler level.
 \end{itemize}
 
 \section{Delimitations}
+The thesis project aims to offer a characterization of memory access
+of programs relating to speculative execution. The project does not
+aim to propose or implement mitigation methods to protect against
+speculative execution attacks.
 
 \section{Time plan}
 Xiaoyue Chen will be working full-time on the project for the entire
-spring term in 2022. The detailed time plan follows table
-\ref{tab:timeplan}.
+spring term in 2022. The project starts on 12 Jan (week 2), and ends
+on 12 Jun (week 24). The project should be carried out in an iterative
+approach, i.e., development, experiment, and writing. A time plan
+follows table~\ref{tab:timeplan}.
+
+\begin{landscape}
 \begin{table}[h]
   \centering
-  \begin{tabular}{ll}
+  \begin{tabular}{lll}
     \toprule
-    Date &  Plan \\
+    Week &  Tasks & Write report sections \\
     \midrule
-    12 Jan & Project starts \\
-    12 Jun & Project ends \\
+    2,3 & Bibliographical research, searching and learning software tools & Introduction and background \\
+    4,5,6 & Develop software STT system using pin tool & Background \\
+    7 & Running experiments and analyzing results & Methods \\
+    8,9,10 & Further developments and testing & Methods \\
+    11 & Experiments and mid-project evaluation & Results \\
+    12,13 & Experiments, logging untaint and plotting & Results \\
+    14,15,16 & Experiments and iterative report writing & Results and discussion \\
+    17,18 & Free slot & Results and discussion \\
+    19.20 & Receiving feedback and report writing & All \\
+    21 & Finalizing report & All \\
+    22,23 & Book and prepare for presentation & --- \\
+    24 & Project ends & --- \\
     \bottomrule
   \end{tabular}
   \caption{The time plan for the project}
   \label{tab:timeplan}
 \end{table}
+\end{landscape}
 
 
 \bibliographystyle{IEEEtran} \bibliography{references}

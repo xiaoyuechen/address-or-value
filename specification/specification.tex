@@ -6,7 +6,7 @@
 \usepackage{hyperref}
 \usepackage{pdflscape}
 
-\title{Distinguish Between Memory Addresses and Data\\Thesis Specification}
+\title{Distinguishing Between Addresses and Data\\Thesis Specification}
 
 \author{Xiaoyue Chen}
 
@@ -26,6 +26,12 @@ memory (e.g., as an array index). While this property makes the
 architecture more flexible, it also raises security concerns. By
 exploiting this property, attackers could break memory isolation
 between processes and leak confidential information.
+
+Distinguishing between memory addresses and data opens opportunities
+for more secure systems. The processor could forbid loads that use
+data as address to prevent such attacks. On the other hand,
+separating address from data can lead to more efficient address
+translation.
 
 \subsection{Spectre and Meltdown}
 Spectre \cite{kocher2019spectre} and Meltdown \cite{lipp2018meltdown}
@@ -107,7 +113,7 @@ follows table~\ref{tab:timeplan}.
     Week &  Tasks & Write report sections \\
     \midrule
     2,3 & Bibliographical research, searching and learning software tools & Introduction and background \\
-    4,5,6 & Develop software STT system using pin tool & Background \\
+    4,5,6 & Develop software address-tainting system using pin tool & Background \\
     7 & Running experiments and analyzing results & Methods \\
     8,9,10 & Further developments and testing & Methods \\
     11 & Experiments and mid-project evaluation & Results \\

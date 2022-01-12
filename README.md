@@ -1,24 +1,25 @@
-# Address or data?
+# Address or value?
 
 This repository contains Xiaoyue Chen's Master's thesis which
 currently only includes the LaTeX source code of the project proposal.
 
-## The notion of address and data
+## The notion of address and value
 
 - An address is used (directly or indirectly) as a memory location in
   some load/store instruction(s).
-- Data is not used as memory locations in any load/store instructions.
+- A value is not used as a memory location in any load/store instructions.
 
 ## Research questions
 
-- Is it possible to know if a piece of memory contains an address or
-  data?
+- Is it possible to know if a piece of memory contains an address or a
+  value?
 
 ## Security implications
 
-- Spectre attacks rely on using data as a memory address for storing.
-  If we could distinguish data from address, protections could be
-  added to prevent data from being misused as address.
+- Spectre attacks rely on using a value as a memory address for
+  storing. If we could distinguish a value from an address,
+  protections could be added to prevent a value from being misused as
+  an address.
 
 ## Who is involved
 

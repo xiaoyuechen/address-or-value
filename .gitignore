@@ -1,2 +1,6 @@
 # emacs backup files
 *~
+
+# language server files
+compile_commands.json
+.cache

@@ -41,13 +41,6 @@ main:
 	subq	$32, %rsp
 	movl	%edi, -20(%rbp)
 	movq	%rsi, -32(%rbp)
-	movq	a(%rip), %rax
-	addq	$666, %rax
-	movq	%rax, %rsi
-	leaq	.LC0(%rip), %rax
-	movq	%rax, %rdi
-	movl	$0, %eax
-	call	printf@PLT
 	movq	$0, -8(%rbp)
 	jmp	.L2
 .L3:
@@ -62,7 +55,7 @@ main:
 	leaq	.LC0(%rip), %rax
 	movq	%rax, %rdi
 	movl	$0, %eax
-	call	printf@PLT
+p	call	printf@PLT
 	addq	$1, -8(%rbp)
 .L2:
 	movl	$5, %eax

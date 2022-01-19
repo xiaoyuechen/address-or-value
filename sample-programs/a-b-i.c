@@ -25,7 +25,6 @@ const static size_t size = sizeof (a) / sizeof (a[0]);
 int
 main (int argc, char *argv[])
 {
-  printf("%zu\n", a[0] + 666);
   for (size_t i = 0; i < size; ++i)
     {
       printf ("%zu\n", a[b[i]]);

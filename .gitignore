@@ -4,3 +4,6 @@
 # language server files
 compile_commands.json
 .cache
+
+# obj
+*.o

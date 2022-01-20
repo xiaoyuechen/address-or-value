@@ -23,20 +23,26 @@
 #include <bitset>
 #include <cstddef>
 #include <cstdint>
+#include <cstdio>
+#include <string>
 
-using TAINT = size_t;
+namespace da
+{
 
 template <size_t NUM_ROW, size_t NUM_TAINT> class TAINT_TABLE
 {
 public:
+  using ROW = size_t;
+  using TAINT = size_t;
+
   bool
-  IsTainted (size_t row, TAINT taint) const
+  IsTainted (ROW row, TAINT taint) const
   {
     return table_[row][taint];
   }
 
   void
-  Taint (size_t row, TAINT taint)
+  Taint (ROW row, TAINT taint)
   {
     if (table_[row][taint])
       return;
@@ -48,13 +54,34 @@ public:
   }
 
   void
-  Untaint (size_t row, TAINT taint)
+  Untaint (ROW row, TAINT taint)
   {
     if (!table_[row][taint])
       return;
 
     table_[row][taint] = false;
     --taint_count_[taint];
+  }
+
+  void
+  UntaintCol (TAINT taint)
+  {
+    for (size_t row = 0; row < NUM_ROW; ++row)
+      {
+        Untaint (row, taint);
+      }
+  }
+
+  void
+  Union (ROW dst, ROW src)
+  {
+    table_[dst] |= table_[src];
+  }
+
+  void
+  Diff (ROW dst, ROW src)
+  {
+    table_[dst] ^= table_[src];
   }
 
   TAINT
@@ -71,11 +98,7 @@ public:
       {
         size_t *oldest = std::min_element (timestamp_, timestamp_ + NUM_TAINT);
         taint = oldest - timestamp_;
-
-        for (size_t row = 0; row < NUM_ROW; ++row)
-          {
-            Untaint (row, taint);
-          }
+        UntaintCol (taint);
 
         ++exhaustion_count_;
       }
@@ -83,12 +106,29 @@ public:
     return taint;
   }
 
+  const std::string &
+  ToString () const
+  {
+    buff.clear ();
+    for (const std::bitset<NUM_TAINT> *it = table_; it != table_ + NUM_ROW;
+         ++it)
+      {
+        buff += it->template to_string<char, std::char_traits<char>,
+                                       std::allocator<char> > ()
+                + '\n';
+      }
+    return buff;
+  }
+
 private:
   std::bitset<NUM_TAINT> table_[NUM_ROW]{};
-  size_t taint_count_[NUM_TAINT]{ 0 };
+  size_t taint_count_[NUM_TAINT]{};
   size_t time_ = 0;
-  size_t timestamp_[NUM_TAINT]{ 0 };
+  size_t timestamp_[NUM_TAINT]{};
   size_t exhaustion_count_ = 0;
+  mutable std::string buff{};
 };
+
+}
 
 #endif

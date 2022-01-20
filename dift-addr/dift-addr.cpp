@@ -20,29 +20,120 @@
 #include "taint-table.h"
 #include "types_foundation.PH"
 #include "types_vmapi.PH"
+#include <algorithm>
 #include <fstream>
 #include <iostream>
 #include <map>
 #include <stdio.h>
 #include <types.h>
 
-#ifndef MAX_TAINT_SET_SIZE
-#define MAX_TAINT_SET_SIZE 8
+#ifndef NUM_TAINT
+#define NUM_TAINT 16
 #endif
 
-#ifndef MAX_REG_ARRAY_SIZE
-#define MAX_REG_ARRAY_SIZE 2
+#ifndef MAX_OP_COUNT
+#define MAX_OP_COUNT 16
 #endif
 
 using std::cerr;
 using std::endl;
 using std::string;
 
+#define OP_T_LIST                                                             \
+  X0 (NONE)                                                                   \
+  X (IMM)                                                                     \
+  X (REG)                                                                     \
+  X (MEM)                                                                     \
+  X (ADR)
+
+typedef enum
+{
+#define X(name) OP_T_##name,
+#define X0(name) X (name)
+  OP_T_LIST
+#undef X0
+#undef X
+      OP_T_COUNT
+} OP_T;
+
+static const char *OP_T_STR[OP_T_COUNT] = {
+#define X(name) #name,
+#define X0(name) "---",
+  OP_T_LIST
+#undef X0
+#undef X
+};
+
+typedef enum
+{
+  OP_RW_NONE = 0,
+  OP_RW_R = 1 << 0,
+  OP_RW_W = 1 << 1
+} OP_RW;
+
+typedef struct OP
+{
+  OP_T t;
+  OP_RW rw;
+
+  union CONTENT
+  {
+    REG reg;
+    struct MEM
+    {
+      REG base, index;
+    } mem;
+  } content;
+} OP;
+
+string
+OP_ToString (OP op)
+{
+  static const size_t MAX_CHAR_COUNT = 64;
+  char buff[MAX_CHAR_COUNT];
+  int offset = snprintf (buff, MAX_CHAR_COUNT, "%s %d%d ", OP_T_STR[op.t],
+                         op.rw & OP_RW_R ? 1 : 0, op.rw & OP_RW_W ? 1 : 0);
+  switch (op.t)
+    {
+    case OP_T_REG:
+      snprintf (buff + offset, MAX_CHAR_COUNT, "%s",
+                REG_StringShort (op.content.reg).c_str ());
+      break;
+    case OP_T_MEM:
+    case OP_T_ADR:
+      snprintf (buff + offset, MAX_CHAR_COUNT, "%s %s",
+                REG_valid (op.content.mem.base)
+                    ? REG_StringShort (op.content.mem.base).c_str ()
+                    : "",
+                REG_valid (op.content.mem.index)
+                    ? REG_StringShort (op.content.mem.index).c_str ()
+                    : "");
+      break;
+    case OP_T_IMM:
+    default:
+      break;
+    }
+
+  return string (buff);
+}
+
+OP_T
+OP_Type (INS ins, UINT32 n)
+{
+  return INS_OperandIsImmediate (ins, n)          ? OP_T_IMM
+         : INS_OperandIsReg (ins, n)              ? OP_T_REG
+         : INS_OperandIsMemory (ins, n)           ? OP_T_MEM
+         : INS_OperandIsAddressGenerator (ins, n) ? OP_T_ADR
+                                                  : OP_T_NONE;
+}
+
 /* ================================================================== */
 // Global variables
 /* ================================================================== */
 
 static std::map<ADDRINT, string> disassemble;
+static da::TAINT_TABLE<REG_GR_LAST, NUM_TAINT> taint_table;
+// static ADDRINT *ea[NUM_TAINT];
 
 std::ostream *out = &cerr;
 
@@ -70,24 +161,30 @@ Usage ()
   return -1;
 }
 
-VOID
-MemoryReadInfo (INS ins, REG *dst, REG *base, REG *idx)
+int
+INS_Operands (INS ins, OP *op)
 {
-  *dst = REG_INVALID ();
-  for (UINT32 op = 0; op < INS_OperandCount (ins); ++op)
+  for (UINT32 n = 0; n < INS_OperandCount (ins); ++n)
     {
-      if (INS_OperandWritten (ins, op) && INS_OperandIsReg (ins, op))
+      op[n].t = OP_Type (ins, n);
+      op[n].rw
+          = (OP_RW)((INS_OperandRead (ins, n) ? OP_RW_R : OP_RW_NONE)
+                    | (INS_OperandWritten (ins, n) ? OP_RW_W : OP_RW_NONE));
+      switch (op[n].t)
         {
-          REG reg = INS_OperandReg (ins, op);
-          if (REG_is_gr (reg))
-            {
-              *dst = reg;
-            }
+        case OP_T_REG:
+          op[n].content.reg = INS_OperandReg (ins, n);
+          break;
+        case OP_T_MEM:
+        case OP_T_ADR:
+          op[n].content.mem.base = INS_MemoryBaseReg (ins);
+          op[n].content.mem.index = INS_MemoryIndexReg (ins);
+        case OP_T_IMM:
+        default:
+          break;
         }
     }
-
-  *base = INS_MemoryBaseReg (ins);
-  *idx = INS_MemoryIndexReg (ins);
+  return INS_OperandCount (ins);
 }
 
 /* ===================================================================== */
@@ -101,9 +198,10 @@ Disassemble (ADDRINT addr)
 }
 
 VOID
-OnMemoryRead (REG dest, REG base, REG index, ADDRINT *ea)
+OnMemoryRead (REG dest, REG src, REG base, REG index, ADDRINT *ea)
 {
-  printf ("dest=%s base=%s index=%s\nea=%p\n", REG_StringShort (dest).c_str (),
+  printf ("dest=%s src=%s base=%s index=%s\nea=%p\n",
+          REG_StringShort (dest).c_str (), REG_StringShort (src).c_str (),
           REG_StringShort (base).c_str (), REG_StringShort (index).c_str (),
           ea);
 }
@@ -113,29 +211,24 @@ OnMemoryRead (REG dest, REG base, REG index, ADDRINT *ea)
 /* ===================================================================== */
 
 VOID
-TraceMemoryRead (INS ins)
+OpInfo (INS ins)
 {
-  if (INS_IsMemoryRead (ins))
+  OP op[MAX_OP_COUNT];
+  int nop = INS_Operands (ins, op);
+  for (int i = 0; i < nop; ++i)
     {
-      disassemble[INS_Address (ins)] = INS_Disassemble (ins);
-      INS_InsertCall (ins, IPOINT_BEFORE, (AFUNPTR)Disassemble, IARG_ADDRINT,
-                      INS_Address (ins), IARG_END);
-
-      REG dest, base, index;
-      MemoryReadInfo (ins, &dest, &base, &index);
-      INS_InsertCall (ins, IPOINT_BEFORE, (AFUNPTR)OnMemoryRead, IARG_UINT32,
-                      dest, IARG_UINT32, base, IARG_UINT32, index,
-                      IARG_MEMORYREAD_EA, IARG_END);
+      printf ("    OP %d: %s\n", i + 1, OP_ToString (op[i]).c_str ());
     }
 }
 
 VOID
 Trace (INS ins, VOID *v)
 {
-  if (INS_IsMemoryRead (ins))
-    {
-      TraceMemoryRead (ins);
-    }
+  disassemble[INS_Address (ins)] = INS_Disassemble (ins);
+  Disassemble (INS_Address (ins));
+  // INS_InsertCall (ins, IPOINT_BEFORE, (AFUNPTR)Disassemble, IARG_ADDRINT,
+  //                 INS_Address (ins), IARG_END);
+  OpInfo (ins);
 }
 
 /*!
@@ -149,7 +242,7 @@ VOID
 Fini (INT32 code, VOID *v)
 {
   *out << "===============================================" << endl;
-  *out << "dift-tool analysis results: " << endl;
+  *out << "dift-addr analysis results: " << endl;
   *out << "===============================================" << endl;
 }
 
@@ -171,10 +264,6 @@ main (int argc, char *argv[])
       return Usage ();
     }
 
-  TAINT_TABLE<16, 32> tt;
-  tt.IsTainted(0, 0);
-  tt.IsTainted(0, 0);
-
   string file_name = KnobOutputFile.Value ();
 
   if (!file_name.empty ())
@@ -189,7 +278,7 @@ main (int argc, char *argv[])
   PIN_AddFiniFunction (Fini, 0);
 
   cerr << "===============================================" << endl;
-  cerr << "This application is instrumented by dift-tool" << endl;
+  cerr << "This application is instrumented by dift-addr" << endl;
   if (!KnobOutputFile.Value ().empty ())
     {
       cerr << "See file " << KnobOutputFile.Value () << " for analysis results"

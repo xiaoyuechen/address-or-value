@@ -1,9 +1,0 @@
-obj-intel64
-doc
-.cache
-compile_commands.json
-*.log
-*.out
-*.sln
-*.vcxproj
-*.vcxproj.filters

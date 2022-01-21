@@ -22,8 +22,8 @@
 #include "pin.H"
 #include <string>
 
-#ifndef MAX_OP_COUNT
-#define MAX_OP_COUNT 16
+#ifndef OP_MAX_OP_COUNT
+#define OP_MAX_OP_COUNT 16
 #endif
 
 #define OP_T_LIST                                                             \

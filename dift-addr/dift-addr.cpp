@@ -18,6 +18,7 @@
 
 #include "operand.h"
 #include "pin.H"
+#include "propagation.h"
 #include "taint-table.h"
 #include "types_foundation.PH"
 #include "types_vmapi.PH"
@@ -96,7 +97,7 @@ OnMemoryRead (REG dest, REG src, REG base, REG index, ADDRINT *ea)
 VOID
 OpInfo (INS ins)
 {
-  OP op[MAX_OP_COUNT];
+  OP op[OP_MAX_OP_COUNT];
   int nop = INS_Operands (ins, op);
   for (int i = 0; i < nop; ++i)
     {
@@ -108,10 +109,11 @@ VOID
 Trace (INS ins, VOID *v)
 {
   disassemble[INS_Address (ins)] = INS_Disassemble (ins);
-  Disassemble (INS_Address (ins));
+  // Disassemble (INS_Address (ins));
   // INS_InsertCall (ins, IPOINT_BEFORE, (AFUNPTR)Disassemble, IARG_ADDRINT,
   //                 INS_Address (ins), IARG_END);
-  OpInfo (ins);
+  // OpInfo (ins);
+  PG_InstrumentPropagation (ins);
 }
 
 /*!

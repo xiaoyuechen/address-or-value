@@ -43,7 +43,7 @@ SA_TOOL_ROOTS :=
 APP_ROOTS :=
 
 # This defines any additional object files that need to be compiled.
-OBJECT_ROOTS := operand
+OBJECT_ROOTS := operand propagation util
 
 # This defines any additional dlls (shared objects), other than the pintools, that need to be compiled.
 DLL_ROOTS :=
@@ -87,8 +87,7 @@ a-b-i.test:
 # This section contains the build rules for all binaries that have special build rules.
 # See makefile.default.rules for the default build rules.
 
-$(OBJDIR)dift-addr$(OBJ_SUFFIX): dift-addr.cpp operand.h taint-table.h
-	$(CXX) $(TOOL_CXXFLAGS) $(COMP_OBJ)$@ $<
-
-$(OBJDIR)dift-addr$(PINTOOL_SUFFIX): $(OBJDIR)dift-addr$(OBJ_SUFFIX) $(OBJDIR)operand$(OBJ_SUFFIX)
+$(OBJDIR)dift-addr$(PINTOOL_SUFFIX): $(OBJDIR)dift-addr$(OBJ_SUFFIX) \
+	$(OBJDIR)operand$(OBJ_SUFFIX) $(OBJDIR)propagation$(OBJ_SUFFIX) \
+	$(OBJDIR)util$(OBJ_SUFFIX)
 	$(LINKER) $(TOOL_LDFLAGS) $(LINK_EXE)$@ $(^:%.h=) $(TOOL_LPATHS) $(TOOL_LIBS)

@@ -1,4 +1,4 @@
-#include "operand.h"
+#include "operand.hpp"
 
 static const char *OP_T_STR[OP_T_COUNT] = {
 #define X(name) #name,
@@ -32,6 +32,8 @@ OP_ToString (OP op)
                     : "");
       break;
     case OP_T_IMM:
+      snprintf (buff + offset, MAX_CHAR_COUNT, "0x%x", op.content.imm);
+      break;
     default:
       break;
     }
@@ -67,7 +69,10 @@ INS_Operands (INS ins, OP *op)
         case OP_T_ADR:
           op[n].content.mem.base = INS_MemoryBaseReg (ins);
           op[n].content.mem.index = INS_MemoryIndexReg (ins);
+          break;
         case OP_T_IMM:
+          op[n].content.imm = (long)INS_OperandImmediate (ins, n);
+          break;
         default:
           break;
         }

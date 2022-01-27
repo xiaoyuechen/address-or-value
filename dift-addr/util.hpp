@@ -4,6 +4,6 @@
 #include "pin.H"
 #include <string>
 
-std::string UT_InstructionOperandString (INS ins);
+std::string UT_InsOpString (INS ins);
 
 #endif

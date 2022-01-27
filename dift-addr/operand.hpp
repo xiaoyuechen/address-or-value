@@ -20,6 +20,7 @@
 #define OPERAND_H
 
 #include "pin.H"
+#include <cstdint>
 #include <string>
 
 #ifndef OP_MAX_OP_COUNT
@@ -62,6 +63,7 @@ typedef struct OP
     {
       REG base, index;
     } mem;
+    uint32_t imm;
   } content;
 } OP;
 

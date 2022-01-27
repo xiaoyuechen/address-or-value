@@ -16,10 +16,10 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "operand.h"
+#include "operand.hpp"
 #include "pin.H"
-#include "propagation.h"
-#include "taint-table.h"
+#include "propagation.hpp"
+#include "taint-table.hpp"
 #include "types_foundation.PH"
 #include "types_vmapi.PH"
 #include <algorithm>

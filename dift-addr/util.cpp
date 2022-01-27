@@ -17,11 +17,11 @@
  */
 
 #include "util.h"
-#include "operand.h"
+#include "operand.hpp"
 #include <string>
 
 std::string
-UT_InstructionOperandString (INS ins)
+UT_InsOpString (INS ins)
 {
   OP op[OP_MAX_OP_COUNT];
   int nop = INS_Operands (ins, op);

@@ -87,6 +87,12 @@ a-b-i.test:
 # This section contains the build rules for all binaries that have special build rules.
 # See makefile.default.rules for the default build rules.
 
+$(OBJDIR)operand$(OBJ_SUFFIX): operand.cpp operand.hpp
+	$(CXX) $(TOOL_CXXFLAGS) $(COMP_OBJ)$@ $<
+
+$(OBJDIR)paopagation$(OBJ_SUFFIX): propagation.cpp operand.hpp
+	$(CXX) $(TOOL_CXXFLAGS) $(COMP_OBJ)$@ $<
+
 $(OBJDIR)dift-addr$(PINTOOL_SUFFIX): $(OBJDIR)dift-addr$(OBJ_SUFFIX) \
 	$(OBJDIR)operand$(OBJ_SUFFIX) $(OBJDIR)propagation$(OBJ_SUFFIX) \
 	$(OBJDIR)util$(OBJ_SUFFIX)

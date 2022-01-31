@@ -77,7 +77,7 @@ IsInsRelevant (INS ins)
 {
   bool irrelevant = INS_IsBranch (ins) || INS_IsCall (ins) || INS_IsNop (ins)
                     || INS_Opcode (ins) == XED_ICLASS_CPUID;
-  return !irrelevant && INS_IsMemoryRead (ins);
+  return !irrelevant && INS_IsMemoryWrite (ins);
 }
 
 size_t
@@ -155,6 +155,29 @@ PropagateMemToReg (REG reg_w1, REG reg_w2, REG mem_r1, REG mem_r2, ADDRINT ea)
           }
       }
   }
+}
+
+void
+PropagateRegToMem (REG mem_w1, REG mem_w2, REG reg_r1, REG reg_r2, ADDRINT ea)
+{
+  {
+    REG mem_w[] = { mem_w1, mem_w2 };
+    for (REG mem : mem_w)
+      {
+        for (size_t t = 0; t < TT_NUM_TAINT; ++t)
+          {
+            if (tt.IsTainted (mem, t))
+              {
+                tt.UntaintCol (t);
+                addr.insert (tea[t]);
+              }
+          }
+      }
+  }
+
+  addr.erase (ea);
+
+  // TODO: Propagate to stack memory
 }
 
 void

@@ -15,7 +15,6 @@
       "-DHOST_IA32E",
       "-fPIC",
       "-DTARGET_LINUX",
-      "-fabi-version=2",
       "-faligned-new",
       "-I/home/xchen/repos/pin/source/include/pin",
       "-I/home/xchen/repos/pin/source/include/pin/gen",

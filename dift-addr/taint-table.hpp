@@ -26,9 +26,6 @@
 #include <cstdio>
 #include <string>
 
-namespace da
-{
-
 template <size_t NUM_ROW, size_t NUM_TAINT> class TAINT_TABLE
 {
 public:
@@ -73,15 +70,15 @@ public:
   }
 
   void
-  Union (ROW dst, ROW src)
+  Union (ROW dst, ROW src1, ROW src2)
   {
-    table_[dst] |= table_[src];
+    table_[dst] = table_[src1] | table_[src2];
   }
 
   void
-  Diff (ROW dst, ROW src)
+  Diff (ROW dst, ROW src1, ROW src2)
   {
-    table_[dst] ^= table_[src];
+    table_[dst] = table_[src1] ^ table_[src2];
   }
 
   TAINT
@@ -128,7 +125,5 @@ private:
   size_t exhaustion_count_ = 0;
   mutable std::string buff{};
 };
-
-}
 
 #endif

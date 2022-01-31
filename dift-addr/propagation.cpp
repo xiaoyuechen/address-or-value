@@ -27,12 +27,17 @@
 #include <algorithm>
 #include <cstdarg>
 #include <cstdio>
+#include <hash_set>
 #include <stddef.h>
 #include <stdio.h>
+#include <stl/_hash_set.h>
 #include <types.h>
 
+static constexpr size_t TT_NUM_TAINT = 16;
 static constexpr size_t TT_TMP_ROW = REG_GR_LAST + 1;
-TAINT_TABLE<TT_TMP_ROW + 1, 16> tt;
+static TAINT_TABLE<TT_TMP_ROW + 1, TT_NUM_TAINT> tt;
+static ADDRINT tea[TT_NUM_TAINT];
+static std::hash_set<ADDRINT> addr;
 
 bool
 IsRegRelevant (REG reg)
@@ -72,7 +77,7 @@ IsInsRelevant (INS ins)
 {
   bool irrelevant = INS_IsBranch (ins) || INS_IsCall (ins) || INS_IsNop (ins)
                     || INS_Opcode (ins) == XED_ICLASS_CPUID;
-  return !irrelevant;
+  return !irrelevant && INS_IsMemoryRead (ins);
 }
 
 size_t
@@ -121,7 +126,39 @@ CopyReg (REG *dst, const OP *const op, size_t n, OP_RW rw)
 }
 
 void
-PropagateRegReg (REG w1, REG w2, REG r1, REG r2, REG r3)
+PropagateMemToReg (REG reg_w1, REG reg_w2, REG mem_r1, REG mem_r2, ADDRINT ea)
+{
+  {
+    REG mem_r[] = { mem_r1, mem_r2 };
+    for (REG mem : mem_r)
+      {
+        for (size_t t = 0; t < TT_NUM_TAINT; ++t)
+          {
+            if (tt.IsTainted (mem, t))
+              {
+                tt.UntaintCol (t);
+                addr.insert (tea[t]);
+              }
+          }
+      }
+  }
+
+  {
+    size_t t = tt.NextAvailableTaint ();
+    tea[t] = ea;
+    REG reg_w[] = { reg_w1, reg_w2 };
+    for (REG reg : reg_w)
+      {
+        if (REG_valid (reg))
+          {
+            tt.Taint (reg, t);
+          }
+      }
+  }
+}
+
+void
+PropagateRegToReg (REG w1, REG w2, REG r1, REG r2, REG r3)
 {
   REG reg_w[] = { w1, w2 };
   REG reg_r[] = { r1, r2, r3 };
@@ -132,8 +169,11 @@ PropagateRegReg (REG w1, REG w2, REG r1, REG r2, REG r3)
     }
   for (REG w : reg_w)
     {
-      tt.Diff (w, w, w);
-      tt.Union (w, TT_TMP_ROW, TT_TMP_ROW);
+      if (REG_valid (w))
+        {
+          tt.Diff (w, w, w);
+          tt.Union (w, TT_TMP_ROW, TT_TMP_ROW);
+        }
     }
 }
 

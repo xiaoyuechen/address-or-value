@@ -19,11 +19,14 @@
 #ifndef TAINT_TABLE_H
 #define TAINT_TABLE_H
 
+#include "pin.H"
 #include <algorithm>
 #include <bitset>
+#include <cassert>
 #include <cstddef>
 #include <cstdint>
 #include <cstdio>
+#include <sstream>
 #include <string>
 
 template <size_t NUM_ROW, size_t NUM_TAINT> class TAINT_TABLE
@@ -35,17 +38,20 @@ public:
   bool
   IsTainted (ROW row, TAINT taint) const
   {
+    assert (row < NUM_ROW && taint < NUM_TAINT);
+
     return table_[row][taint];
   }
 
   void
   Taint (ROW row, TAINT taint)
   {
+    assert (row < NUM_ROW && taint < NUM_TAINT);
+
     if (table_[row][taint])
       return;
 
     table_[row][taint] = true;
-    ++taint_count_[taint];
 
     timestamp_[taint] = time_++;
   }
@@ -53,16 +59,19 @@ public:
   void
   Untaint (ROW row, TAINT taint)
   {
+    assert (row < NUM_ROW && taint < NUM_TAINT);
+
     if (!table_[row][taint])
       return;
 
     table_[row][taint] = false;
-    --taint_count_[taint];
   }
 
   void
   UntaintCol (TAINT taint)
   {
+    assert (taint < NUM_TAINT);
+
     for (size_t row = 0; row < NUM_ROW; ++row)
       {
         Untaint (row, taint);
@@ -72,12 +81,16 @@ public:
   void
   Union (ROW dst, ROW src1, ROW src2)
   {
+    assert (dst < NUM_ROW && src1 < NUM_ROW && src2 < NUM_ROW);
+
     table_[dst] = table_[src1] | table_[src2];
   }
 
   void
   Diff (ROW dst, ROW src1, ROW src2)
   {
+    assert (dst < NUM_ROW && src1 < NUM_ROW && src2 < NUM_ROW);
+
     table_[dst] = table_[src1] ^ table_[src2];
   }
 
@@ -86,10 +99,17 @@ public:
   {
     TAINT taint;
 
-    size_t *available = std::find (taint_count_, taint_count_ + NUM_TAINT, 0);
-    if (available != taint_count_ + NUM_TAINT)
+    size_t taint_count[NUM_TAINT]{};
+    for (ROW r = 0; r < NUM_ROW; ++r) {
+      for (TAINT t = 0; t < NUM_TAINT; ++t) {
+        taint_count[t] += table_[r][t];
+      }
+    }
+
+    size_t *available = std::find (taint_count, taint_count + NUM_TAINT, 0);
+    if (available != taint_count + NUM_TAINT)
       {
-        taint = available - taint_count_;
+        taint = available - taint_count;
       }
     else
       {
@@ -103,27 +123,29 @@ public:
     return taint;
   }
 
-  const std::string &
-  ToString () const
+  std::string
+  ToString (const char *sl) const
   {
-    buff.clear ();
-    for (const std::bitset<NUM_TAINT> *it = table_; it != table_ + NUM_ROW;
+    std::stringstream buff{};
+    for (const std::bitset<NUM_TAINT> *it = table_ + 3; it != table_ + NUM_ROW;
          ++it)
       {
-        buff += it->template to_string<char, std::char_traits<char>,
-                                       std::allocator<char> > ()
-                + '\n';
+        buff << sl << REG_StringShort ((REG)(it - table_)) << "\t" << *it
+             << "\n";
       }
-    return buff;
+    return buff.str ();
+  }
+
+  size_t GetExhaustionCount () const
+  {
+    return exhaustion_count_;
   }
 
 private:
   std::bitset<NUM_TAINT> table_[NUM_ROW]{};
-  size_t taint_count_[NUM_TAINT]{};
   size_t time_ = 0;
   size_t timestamp_[NUM_TAINT]{};
   size_t exhaustion_count_ = 0;
-  mutable std::string buff{};
 };
 
 #endif

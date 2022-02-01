@@ -40,7 +40,7 @@ TOOL_ROOTS := dift-addr
 SA_TOOL_ROOTS :=
 
 # This defines all the applications that will be run during the tests.
-APP_ROOTS :=
+APP_ROOTS := a-b-i fibonacci
 
 # This defines any additional object files that need to be compiled.
 OBJECT_ROOTS := operand propagation util
@@ -74,9 +74,16 @@ SANITY_SUBSET := $(TEST_TOOL_ROOTS) $(TEST_ROOTS)
 # See makefile.default.rules for the default test rules.
 # All tests in this section should adhere to the naming convention: <testname>.test
 .PHONY: a-b-i.test
-a-b-i.test:
-	$(PIN_ROOT)/pin -t obj-intel64/dift-addr.so -- ../sample-programs/a-b-i
+a-b-i.test: $(OBJDIR)dift-addr$(PINTOOL_SUFFIX) $(OBJDIR)a-b-i$(EXE_SUFFIX)
+	$(PIN) -t $(OBJDIR)dift-addr.so -- $(OBJDIR)a-b-i$(EXE_SUFFIX)
 
+.PHONY: a-b-i.debug.test
+a-b-i.debug.test:
+	$(PIN) -pause_tool 20 -t obj-intel64/dift-addr.so -- ../sample-programs/a-b-i
+
+
+fibonacci.test: $(OBJDIR)dift-addr$(PINTOOL_SUFFIX) $(OBJDIR)fibonacci$(EXE_SUFFIX)
+	$(PIN) -t $(OBJDIR)dift-addr$(PINTOOL_SUFFIX) -- $(OBJDIR)fibonacci$(EXE_SUFFIX) 1000
 
 ##############################################################
 #
@@ -90,7 +97,7 @@ a-b-i.test:
 $(OBJDIR)operand$(OBJ_SUFFIX): operand.cpp operand.hpp
 	$(CXX) $(TOOL_CXXFLAGS) $(COMP_OBJ)$@ $<
 
-$(OBJDIR)paopagation$(OBJ_SUFFIX): propagation.cpp operand.hpp
+$(OBJDIR)propagation$(OBJ_SUFFIX): propagation.cpp operand.hpp taint-table.hpp
 	$(CXX) $(TOOL_CXXFLAGS) $(COMP_OBJ)$@ $<
 
 $(OBJDIR)dift-addr$(PINTOOL_SUFFIX): $(OBJDIR)dift-addr$(OBJ_SUFFIX) \

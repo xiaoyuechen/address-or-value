@@ -1,3 +1,9 @@
+* Questions
+  - [ ] Should we track all the PCs of the use of an address?
+  - [ ] How do addresses and PCs associate?
+    - ~addr: {{PC_l, PC_u}, ...}~
+    - ~{PC_l, PC_u}: {addr, ...}~
+
 * Program
 ** DONE DIFT algorithm design
    - State "DONE"       from "TODO"       [2022-02-02 Wed 11:17]
@@ -12,6 +18,7 @@
    - [X] Instrument one function ::
    - [ ] Store tuples :: ~<pc_ld, pc_use, addr>~
    - [ ] Instrument the entire program ::
+   - [ ] Multi-theaded program support :: Optional, lower priority
 
 ** TODO Test the program
    - [ ] Unit tests :: Write some unit tests to ensure individual

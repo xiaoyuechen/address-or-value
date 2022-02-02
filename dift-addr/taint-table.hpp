@@ -19,6 +19,7 @@
 #ifndef TAINT_TABLE_H
 #define TAINT_TABLE_H
 
+#include "operand.hpp"
 #include "pin.H"
 #include <algorithm>
 #include <bitset>
@@ -100,11 +101,13 @@ public:
     TAINT taint;
 
     size_t taint_count[NUM_TAINT]{};
-    for (ROW r = 0; r < NUM_ROW; ++r) {
-      for (TAINT t = 0; t < NUM_TAINT; ++t) {
-        taint_count[t] += table_[r][t];
+    for (ROW r = 0; r < NUM_ROW; ++r)
+      {
+        for (TAINT t = 0; t < NUM_TAINT; ++t)
+          {
+            taint_count[t] += table_[r][t];
+          }
       }
-    }
 
     size_t *available = std::find (taint_count, taint_count + NUM_TAINT, 0);
     if (available != taint_count + NUM_TAINT)
@@ -118,13 +121,15 @@ public:
         UntaintCol (taint);
 
         ++exhaustion_count_;
+
+        // printf ("EXHAUSTION\n");
       }
 
     return taint;
   }
 
   std::string
-  ToString (const char *sl) const
+  ToString (const char *sl = "") const
   {
     std::stringstream buff{};
     for (const std::bitset<NUM_TAINT> *it = table_ + 3; it != table_ + NUM_ROW;
@@ -136,7 +141,8 @@ public:
     return buff.str ();
   }
 
-  size_t GetExhaustionCount () const
+  size_t
+  GetExhaustionCount () const
   {
     return exhaustion_count_;
   }

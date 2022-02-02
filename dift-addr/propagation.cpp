@@ -136,9 +136,6 @@ CopyReg (REG *dst, const OP *const op, size_t n, OP_RW rw)
 void
 PropagateMemToReg (REG reg_w1, REG reg_w2, REG mem_r1, REG mem_r2, ADDRINT ea)
 {
-  // printf ("Mem2Reg rw %s %s mr %s %s\n", REG_StringShort (reg_w1).c_str (),
-  //         REG_StringShort (reg_w2).c_str (), REG_StringShort (mem_r1).c_str (),
-  //         REG_StringShort (mem_r2).c_str ());
   {
     REG mem_r[] = { mem_r1, mem_r2 };
     for (REG mem : mem_r)
@@ -194,9 +191,6 @@ PropagateRegToMem (REG mem_w1, REG mem_w2, REG reg_r1, REG reg_r2, ADDRINT ea)
 void
 PropagateRegToReg (REG w1, REG w2, REG r1, REG r2, REG r3)
 {
-  // printf ("Reg2Reg w %s %s r %s %s %s\n", REG_StringShort (w1).c_str (),
-  //         REG_StringShort (w2).c_str (), REG_StringShort (r1).c_str (),
-  //         REG_StringShort (r1).c_str (), REG_StringShort (r3).c_str ());
   REG reg_w[] = { w1, w2 };
   REG reg_r[] = { r1, r2, r3 };
   for (REG r : reg_r)
@@ -215,6 +209,12 @@ PropagateRegToReg (REG w1, REG w2, REG r1, REG r2, REG r3)
 }
 
 void
+PropagateClear (REG r)
+{
+  tt.Diff (r, r, r);
+}
+
+void
 InsertAddr (ADDRINT addr)
 {
   addr_any.insert (addr);
@@ -224,13 +224,13 @@ void
 PrintPropagateDebugMsg (ADDRINT addr)
 {
   // printf ("%s\n", disassemble[addr].c_str ());
-  printf ("%s\n%s", disassemble[addr].c_str (), tt.ToString ("    ").c_str ());
-  printf ("    addr ");
-  for (ADDRINT a : addr_mem)
-    {
-      printf ("%p ", (void *)a);
-    }
-  printf ("\n");
+  // printf ("%s\n%s", disassemble[addr].c_str (), tt.ToString ("    ").c_str ());
+  // printf ("    addr ");
+  // for (ADDRINT a : addr_mem)
+  //   {
+  //     printf ("%p ", (void *)a);
+  //   }
+  // printf ("\n");
 }
 
 void
@@ -288,6 +288,12 @@ PG_InstrumentPropagation (INS ins)
                       IARG_MEMORYWRITE_EA, IARG_END);
       INS_InsertCall (ins, IPOINT_BEFORE, (AFUNPTR)InsertAddr,
                       IARG_MEMORYWRITE_EA, IARG_END);
+    }
+
+  if (INS_Opcode (ins) == XED_ICLASS_XOR && reg_r[0] == reg_w[0])
+    {
+      INS_InsertCall (ins, IPOINT_BEFORE, (AFUNPTR)PropagateClear, IARG_UINT32,
+                      reg_r[0], IARG_END);
     }
 
   INS_InsertCall (ins, IPOINT_BEFORE, (AFUNPTR)PrintPropagateDebugMsg,

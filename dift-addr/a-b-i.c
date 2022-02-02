@@ -17,19 +17,23 @@
 
 #include <stddef.h>
 #include <stdio.h>
-
-static size_t b[] = { 0, 1, 2, 3, 4 };
-static size_t a[] = { 1, 3, 5, 7, 9 };
-const static size_t size = sizeof (a) / sizeof (a[0]);
+#include <stdlib.h>
 
 int
 main (int argc, char *argv[])
 {
-  printf ("a-b-i start\n");
+  size_t sump = 0;
+  size_t size = 1000;
+  size_t *b = malloc (size * sizeof (*b));
   for (size_t i = 0; i < size; ++i)
     {
-      printf ("%zu\n", a[b[i]]);
+      b[i] = size - i - 1;
     }
-  printf ("a-b-i end\n");
+  size_t *a = malloc (size * sizeof (*a));
+  for (size_t i = 0; i < size; ++i)
+    {
+      sump += a[b[i]];
+    }
+  printf ("sum %zu\n", sump);
   return 0;
 }

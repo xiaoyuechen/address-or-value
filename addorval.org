@@ -1,8 +1,8 @@
 * Questions
   - [ ] Should we track all the PCs of the use of an address?
   - [ ] How do addresses and PCs associate?
-    - ~addr: {{PC_l, PC_u}, ...}~
-    - ~{PC_l, PC_u}: {addr, ...}~
+    - ~addr: {(PC_l, PC_u), ...}~
+    - ~(PC_l, PC_u): {addr, ...}~
 
 * Program
 ** DONE DIFT algorithm design

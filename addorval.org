@@ -1,0 +1,29 @@
+* Program
+** DONE DIFT algorithm design
+   - State "DONE"       from "TODO"       [2022-02-02 Wed 11:17]
+   Inspirations from these paper
+   - [[file:literature/2007.raksha.isca.pdf][Raksha: A Flexible Information Flow Architecture for Software Security]]
+   - [[file:literature/clause.li.orso.ISSTA07.pdf][Dytan: A Generic Dynamic Taint Analysis Framework]]
+
+** TODO Implementation
+   Have a DIFT program that can mark out memory that contains memory
+   addresses. For example, the address ~&b[i]~ should be marked when
+   it is used in ~a[b[i]]~.
+   - [X] Instrument one function ::
+   - [ ] Store tuples :: ~<pc_ld, pc_use, addr>~
+   - [ ] Instrument the entire program ::
+
+** TODO Test the program
+   - [ ] Unit tests :: Write some unit tests to ensure individual
+     functions work as intended
+   - [ ] Integration tests :: Write some small assembly snippets to
+     ensure the program works as intended
+   - [ ] Real program tests :: Use real programs as input to test if
+     the DIFT program gives reasonable outputs
+
+* Report
+** TODO Introduction
+** TODO Background
+** TODO Methods
+** TODO Results
+** TODO Discussion and conclusion

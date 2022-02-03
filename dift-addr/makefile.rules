@@ -25,7 +25,7 @@
 TEST_TOOL_ROOTS :=
 
 # This defines the tests to be run that were not already defined in TEST_TOOL_ROOTS.
-TEST_ROOTS := a-b-i
+TEST_ROOTS := dift-addr
 
 # This defines the tools which will be run during the the tests, and were not already defined in
 # TEST_TOOL_ROOTS.
@@ -37,7 +37,7 @@ TOOL_ROOTS := dift-addr
 # Note: Static analysis tools are in fact executables linked with the Pin Static Analysis Library.
 # This library provides a subset of the Pin APIs which allows the tool to perform static analysis
 # of an application or dll. Pin itself is not used when this tool runs.
-SA_TOOL_ROOTS :=
+SA_TOOL_ROOTS := taint-table-test
 
 # This defines all the applications that will be run during the tests.
 APP_ROOTS := a-b-i fibonacci
@@ -50,6 +50,11 @@ DLL_ROOTS :=
 
 # This defines any static libraries (archives), that need to be built.
 LIB_ROOTS :=
+
+UTEST_ROOTS := taint-table-test
+
+UTEST_SUFFIX := .utest
+UTESTS := $(UTEST_ROOTS:%=$(OBJDIR)%$(UTEST_SUFFIX))
 
 ###### Handle exceptions here (OS/arch related) ######
 
@@ -73,17 +78,21 @@ SANITY_SUBSET := $(TEST_TOOL_ROOTS) $(TEST_ROOTS)
 # This section contains recipes for tests other than the default.
 # See makefile.default.rules for the default test rules.
 # All tests in this section should adhere to the naming convention: <testname>.test
-.PHONY: a-b-i.test
-a-b-i.test: $(OBJDIR)dift-addr$(PINTOOL_SUFFIX) $(OBJDIR)a-b-i$(EXE_SUFFIX)
-	$(PIN) -t $(OBJDIR)dift-addr.so -- $(OBJDIR)a-b-i$(EXE_SUFFIX)
 
-.PHONY: a-b-i.debug.test
+a-b-i.test: $(OBJDIR)dift-addr$(PINTOOL_SUFFIX) $(APPDIR)a-b-i$(EXE_SUFFIX)
+	$(PIN) -t $(OBJDIR)dift-addr.so -- $(APPDIR)a-b-i$(EXE_SUFFIX)
+
 a-b-i.debug.test:
 	$(PIN) -pause_tool 20 -t obj-intel64/dift-addr.so -- ../sample-programs/a-b-i
 
+fibonacci.test: $(OBJDIR)dift-addr$(PINTOOL_SUFFIX) $(OBJDIR)apps/fibonacci$(EXE_SUFFIX)
+	$(PIN) -t $(OBJDIR)dift-addr$(PINTOOL_SUFFIX) -- $(OBJDIR)apps/fibonacci$(EXE_SUFFIX) 1000
 
-fibonacci.test: $(OBJDIR)dift-addr$(PINTOOL_SUFFIX) $(OBJDIR)fibonacci$(EXE_SUFFIX)
-	$(PIN) -t $(OBJDIR)dift-addr$(PINTOOL_SUFFIX) -- $(OBJDIR)fibonacci$(EXE_SUFFIX) 1000
+utest.all.test: $(UTESTS)
+	$(SET_DLL_PATH) $(OBJDIR)taint-table-test$(UTEST_SUFFIX)
+
+utest.%.test: $(OBJDIR)%-test$(UTEST_SUFFIX)
+	$<
 
 ##############################################################
 #
@@ -94,13 +103,20 @@ fibonacci.test: $(OBJDIR)dift-addr$(PINTOOL_SUFFIX) $(OBJDIR)fibonacci$(EXE_SUFF
 # This section contains the build rules for all binaries that have special build rules.
 # See makefile.default.rules for the default build rules.
 
+
+
+utests: dir $(UTESTS)
+
+$(OBJDIR)%-test$(OBJ_SUFFIX): minicut.h
+
+$(OBJDIR)%$(UTEST_SUFFIX): $(OBJDIR)%$(OBJ_SUFFIX)
+	$(LINKER) $(SATOOL_LDFLAGS) $(LINK_EXE)$@ $^ $(SATOOL_LPATHS) $(SATOOL_LIBS)
+
 $(OBJDIR)operand$(OBJ_SUFFIX): operand.cpp operand.hpp
-	$(CXX) $(TOOL_CXXFLAGS) $(COMP_OBJ)$@ $<
 
 $(OBJDIR)propagation$(OBJ_SUFFIX): propagation.cpp operand.hpp taint-table.hpp
-	$(CXX) $(TOOL_CXXFLAGS) $(COMP_OBJ)$@ $<
 
 $(OBJDIR)dift-addr$(PINTOOL_SUFFIX): $(OBJDIR)dift-addr$(OBJ_SUFFIX) \
 	$(OBJDIR)operand$(OBJ_SUFFIX) $(OBJDIR)propagation$(OBJ_SUFFIX) \
 	$(OBJDIR)util$(OBJ_SUFFIX)
-	$(LINKER) $(TOOL_LDFLAGS) $(LINK_EXE)$@ $(^:%.h=) $(TOOL_LPATHS) $(TOOL_LIBS)
+	$(LINKER) $(TOOL_LDFLAGS) $(LINK_EXE)$@ $^ $(TOOL_LPATHS) $(TOOL_LIBS)

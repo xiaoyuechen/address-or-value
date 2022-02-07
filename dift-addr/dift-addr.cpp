@@ -22,6 +22,7 @@
 #include "taint-table.hpp"
 #include "types_foundation.PH"
 #include "types_vmapi.PH"
+#include "util.hpp"
 #include <algorithm>
 #include <fstream>
 #include <iostream>
@@ -110,6 +111,14 @@ Fini (INT32 code, VOID *v)
   *out << "===============================================" << endl;
 }
 
+void
+TraceInstruction(INS ins, VOID*)
+{
+  if (INS_IsMemoryRead(ins)) {
+    printf("%s", UT_InsOpString(ins).c_str()) ;
+  }
+}
+
 /*!
  * The main procedure of the tool.
  * This function is called when the application image is loaded but not yet
@@ -138,6 +147,7 @@ main (int argc, char *argv[])
 
   // Register function to be called to instrument traces
   RTN_AddInstrumentFunction (TraceRoutine, 0);
+  // INS_AddInstrumentFunction (TraceInstruction, 0);
 
   // Register function to be called when the application exits
   PIN_AddFiniFunction (Fini, 0);

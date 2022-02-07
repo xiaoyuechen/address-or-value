@@ -17,23 +17,12 @@
  */
 
 #include "operand.hpp"
-#include "taint-table.hpp"
-#include <cstdio>
+#include "minicut-main.h"
+#include "minicut-mini.h"
 
-extern "C"
+MC_test (operand_test)
 {
-#include "minicut.h"
+  MC_assert (1);
+  REG r = REG_INVALID ();
+  MC_assert (!r);
 }
-
-MC_TEST (atest)
-{
-  MC_ASSERT (true);
-  MC_ASSERT (0 == 1);
-  MC_ASSERT (1 == 2);
-  MC_ASSERT (1 == 3);
-  MC_ASSERT (true);
-}
-
-MC_TEST (btest) { MC_ASSERT (true); }
-
-MC_TEST (ctest) { MC_ASSERT (true); }

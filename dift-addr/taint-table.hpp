@@ -19,14 +19,10 @@
 #ifndef TAINT_TABLE_H
 #define TAINT_TABLE_H
 
-#include "operand.hpp"
-#include "pin.H"
 #include <algorithm>
 #include <bitset>
 #include <cassert>
 #include <cstddef>
-#include <cstdint>
-#include <cstdio>
 #include <sstream>
 #include <string>
 
@@ -121,22 +117,24 @@ public:
         UntaintCol (taint);
 
         ++exhaustion_count_;
-
-        // printf ("EXHAUSTION\n");
       }
 
     return taint;
   }
 
   std::string
-  ToString (const char *sl = "") const
+  ToString (std::string (*start_line) (ROW) = nullptr, ROW first = 0,
+            ROW last = NUM_ROW) const
   {
     std::stringstream buff{};
-    for (const std::bitset<NUM_TAINT> *it = table_ + 3; it != table_ + NUM_ROW;
-         ++it)
+    for (const std::bitset<NUM_TAINT> *it = table_ + first;
+         it != table_ + last; ++it)
       {
-        buff << sl << REG_StringShort ((REG)(it - table_)) << "\t" << *it
-             << "\n";
+        if (start_line)
+          {
+            buff << start_line (it - table_);
+          }
+        buff << *it << "\n";
       }
     return buff.str ();
   }

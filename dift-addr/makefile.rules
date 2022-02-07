@@ -84,11 +84,11 @@ all.utest.test: $(UTEST_ROOTS:%=%.utest.test)
 %.utest.test: $(OBJDIR)%.utest
 	$(SET_DLL_PATH) $<
 
-a-b-i.test: $(OBJDIR)dift-addr$(PINTOOL_SUFFIX) $(OBJDIR)a-b-i$(EXE_SUFFIX)
-	$(PIN) -t $(OBJDIR)dift-addr.so -- $(OBJDIR)a-b-i$(EXE_SUFFIX) &> $(OBJDIR)$@.out
+a-b-i.test: $(OBJDIR)dift-addr$(PINTOOL_SUFFIX)
+	$(PIN) -t $(OBJDIR)dift-addr.so -filter_no_shared_libs -filter_rtn main -- ../sample-programs/a-b-i &> $(OBJDIR)$@.out
 
 fibonacci.test: $(OBJDIR)dift-addr$(PINTOOL_SUFFIX) $(OBJDIR)fibonacci$(EXE_SUFFIX)
-	$(PIN) -t $(OBJDIR)dift-addr$(PINTOOL_SUFFIX) -- $(OBJDIR)fibonacci$(EXE_SUFFIX) 1000 &> $(OBJDIR)$@.out
+	$(PIN) -t $(OBJDIR)dift-addr$(PINTOOL_SUFFIX) -filter_no_shared_libs -- $(OBJDIR)fibonacci$(EXE_SUFFIX) 1000 &> $(OBJDIR)$@.out
 
 
 
@@ -101,9 +101,12 @@ fibonacci.test: $(OBJDIR)dift-addr$(PINTOOL_SUFFIX) $(OBJDIR)fibonacci$(EXE_SUFF
 # This section contains the build rules for all binaries that have special build rules.
 # See makefile.default.rules for the default build rules.
 
+$(OBJDIR)%$(EXE_SUFFIX): %.cpp
+	$(APP_CXX) $(APP_CXXFLAGS) $(COMP_EXE)$@ $< $(APP_LDFLAGS) $(APP_LIBS) $(CXX_LPATHS) $(CXX_LIBS)
+
 utests: dir $(UTESTS)
 
-$(OBJDIR)%.utest: $(OBJDIR)%.utest$(OBJ_SUFFIX)
+$(OBJDIR)%.utest: $(OBJDIR)%.utest$(OBJ_SUFFIX) $(OBJDIR)%$(OBJ_SUFFIX)
 	$(LINKER) $(SATOOL_LDFLAGS) $(LINK_EXE)$@ $^ $(SATOOL_LPATHS) $(SATOOL_LIBS)
 
 $(OBJDIR)operand$(OBJ_SUFFIX): operand.cpp operand.hpp

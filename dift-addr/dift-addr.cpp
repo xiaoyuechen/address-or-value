@@ -16,8 +16,11 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "operand.hpp"
 #include "pin.H"
+// pin.H must be included first
+#include "instlib.H"
+
+#include "operand.hpp"
 #include "propagation.hpp"
 #include "taint-table.hpp"
 #include "types_foundation.PH"
@@ -42,8 +45,7 @@ using std::string;
 // Global variables
 /* ================================================================== */
 
-static std::map<ADDRINT, string> disassemble;
-// static ADDRINT *ea[NUM_TAINT];
+INSTLIB::FILTER filter;
 
 std::ostream *out = &cerr;
 
@@ -80,19 +82,19 @@ Usage ()
 /* ===================================================================== */
 
 VOID
-TraceRoutine (RTN rtn, VOID *v)
+Trace (TRACE trace, VOID *val)
 {
-  if (RTN_Name (rtn) == "main")
-    {
-      RTN_Open (rtn);
+  if (!filter.SelectTrace (trace))
+    return;
 
-      // For each instruction of the routine
-      for (INS ins = RTN_InsHead (rtn); INS_Valid (ins); ins = INS_Next (ins))
+  for (BBL bbl = TRACE_BblHead (trace); BBL_Valid (bbl); bbl = BBL_Next (bbl))
+    {
+      for (INS ins = BBL_InsHead (bbl); INS_Valid (ins); ins = INS_Next (ins))
         {
           PG_InstrumentPropagation (ins);
+          // printf ("%s", UT_InsOpString (ins).c_str ());
+          // printf ("%s", UT_InsRtnString (ins, TRACE_Rtn (trace)).c_str ());
         }
-
-      RTN_Close (rtn);
     }
 }
 
@@ -109,14 +111,6 @@ Fini (INT32 code, VOID *v)
   *out << "===============================================" << endl;
   *out << "dift-addr analysis results: " << endl;
   *out << "===============================================" << endl;
-}
-
-void
-TraceInstruction(INS ins, VOID*)
-{
-  if (INS_IsMemoryRead(ins)) {
-    printf("%s", UT_InsOpString(ins).c_str()) ;
-  }
 }
 
 /*!
@@ -146,8 +140,9 @@ main (int argc, char *argv[])
     }
 
   // Register function to be called to instrument traces
-  RTN_AddInstrumentFunction (TraceRoutine, 0);
-  // INS_AddInstrumentFunction (TraceInstruction, 0);
+  // RTN_AddInstrumentFunction (TraceRoutine, 0);
+  TRACE_AddInstrumentFunction (Trace, 0);
+  filter.Activate ();
 
   // Register function to be called when the application exits
   PIN_AddFiniFunction (Fini, 0);

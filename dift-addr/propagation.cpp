@@ -30,7 +30,9 @@
 #include <set>
 #include <stddef.h>
 #include <stdio.h>
+#include <string>
 #include <types.h>
+#include <unordered_map>
 #include <vector>
 
 static constexpr size_t TT_NUM_TAINT = 16;
@@ -39,7 +41,7 @@ static TAINT_TABLE<TT_TMP_ROW + 1, TT_NUM_TAINT> tt;
 static ADDRINT tea[TT_NUM_TAINT];
 static std::set<ADDRINT> addr_mem;
 static std::set<ADDRINT> addr_any;
-static std::map<ADDRINT, std::string> disassemble;
+static std::unordered_map<ADDRINT, std::string> disassemble;
 
 bool
 IsRegRelevant (REG reg)
@@ -136,33 +138,39 @@ CopyReg (REG *dst, const OP *const op, size_t n, OP_RW rw)
 void
 PropagateMemToReg (REG reg_w1, REG reg_w2, REG mem_r1, REG mem_r2, ADDRINT ea)
 {
-  {
-    REG mem_r[] = { mem_r1, mem_r2 };
-    for (REG mem : mem_r)
-      {
-        for (size_t t = 0; t < TT_NUM_TAINT; ++t)
-          {
-            if (tt.IsTainted (mem, t))
-              {
-                tt.UntaintCol (t);
-                addr_mem.insert (tea[t]);
-              }
-          }
-      }
-  }
+  REG mem_r[] = { mem_r1, mem_r2 };
+  for (REG mem : mem_r)
+    {
+      for (size_t t = 0; t < TT_NUM_TAINT; ++t)
+        {
+          if (tt.IsTainted (mem, t))
+            {
+              tt.UntaintCol (t);
+              addr_mem.insert (tea[t]);
+            }
+        }
+    }
 
-  {
-    size_t t = tt.NextAvailableTaint ();
-    tea[t] = ea;
-    REG reg_w[] = { reg_w1, reg_w2 };
-    for (REG reg : reg_w)
-      {
-        if (IsRegRelevant (reg))
-          {
-            tt.Taint (reg, t);
-          }
-      }
-  }
+  REG reg_w[] = { reg_w1, reg_w2 };
+  for (REG reg : reg_w)
+    {
+      if (IsRegRelevant (reg))
+        {
+          tt.Diff (reg, reg, reg);
+        }
+    }
+  if (mem_r1 != REG_RBP && mem_r1 != REG_RSP)
+    {
+      size_t t = tt.NextAvailableTaint ();
+      tea[t] = ea;
+      for (REG reg : reg_w)
+        {
+          if (IsRegRelevant (reg))
+            {
+              tt.Taint (reg, t);
+            }
+        }
+    }
 }
 
 void
@@ -223,23 +231,23 @@ InsertAddr (ADDRINT addr)
 void
 PrintPropagateDebugMsg (ADDRINT addr)
 {
-  // printf ("%s\n", disassemble[addr].c_str ());
-  // printf ("%s\n%s", disassemble[addr].c_str (), tt.ToString ("    ").c_str ());
-  // printf ("    addr ");
-  // for (ADDRINT a : addr_mem)
-  //   {
-  //     printf ("%p ", (void *)a);
-  //   }
-  // printf ("\n");
+  std::string (*row_to_reg) (size_t)
+      = [] (size_t row) { return "\t" + REG_StringShort ((REG)row) + "\t"; };
+  printf ("%s\n%s", disassemble[addr].c_str (),
+          tt.ToString (row_to_reg, REG_GR_BASE, REG_GR_LAST).c_str ());
+  printf ("\taddr ");
+  for (ADDRINT a : addr_mem)
+    {
+      printf ("%p ", (void *)a);
+    }
+  printf ("\n");
 }
 
 void
 PG_InstrumentPropagation (INS ins)
 {
   if (!IsInsRelevant (ins))
-    {
-      return;
-    }
+    return;
 
   disassemble[INS_Address (ins)] = INS_Disassemble (ins);
 
@@ -266,9 +274,13 @@ PG_InstrumentPropagation (INS ins)
   size_t nmem_w = CopyMemReg (mem_w, op, nop, OP_T_MEM, OP_RW_W);
   TransformToFullReg (mem_w, mem_w, nmem_w);
 
-  INS_InsertCall (ins, IPOINT_BEFORE, (AFUNPTR)PropagateRegToReg, IARG_UINT32,
-                  reg_w[0], IARG_UINT32, reg_w[1], IARG_UINT32, reg_r[0],
-                  IARG_UINT32, reg_r[1], IARG_UINT32, reg_r[2], IARG_END);
+  if (!nmem_r)
+    {
+      INS_InsertCall (ins, IPOINT_BEFORE, (AFUNPTR)PropagateRegToReg,
+                      IARG_UINT32, reg_w[0], IARG_UINT32, reg_w[1],
+                      IARG_UINT32, reg_r[0], IARG_UINT32, reg_r[1],
+                      IARG_UINT32, reg_r[2], IARG_END);
+    }
 
   if (INS_IsMemoryRead (ins))
     {
@@ -296,8 +308,8 @@ PG_InstrumentPropagation (INS ins)
                       reg_r[0], IARG_END);
     }
 
-  INS_InsertCall (ins, IPOINT_BEFORE, (AFUNPTR)PrintPropagateDebugMsg,
-                  IARG_ADDRINT, INS_Address (ins), IARG_END);
+  // INS_InsertCall (ins, IPOINT_BEFORE, (AFUNPTR)PrintPropagateDebugMsg,
+  //                 IARG_ADDRINT, INS_Address (ins), IARG_END);
 }
 
 VOID

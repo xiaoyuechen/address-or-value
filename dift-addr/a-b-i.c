@@ -18,22 +18,32 @@
 #include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 int
 main (int argc, char *argv[])
 {
-  size_t sump = 0;
-  size_t size = 1000;
+  size_t sum = 0;
+  size_t size = 10000;
   size_t *b = malloc (size * sizeof (*b));
+  size_t *a = malloc (size * sizeof (*a));
+
   for (size_t i = 0; i < size; ++i)
     {
       b[i] = size - i - 1;
     }
-  size_t *a = malloc (size * sizeof (*a));
   for (size_t i = 0; i < size; ++i)
     {
-      sump += a[b[i]];
+      a[i] = 1;
     }
-  printf ("sum %zu\n", sump);
+
+  for (size_t i = 0; i < size; ++i)
+    {
+      sum += a[b[i]];
+    }
+
+  /* memset (b, 0, size * sizeof (*b)); */
+
+  printf ("a %p, b %p, sum %zu\n", a, b, sum);
   return 0;
 }

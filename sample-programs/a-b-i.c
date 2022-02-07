@@ -1,5 +1,4 @@
 /*
- * dift-addr --- DIFT on memory addresses
  * Copyright (C) 2022  Xiaoyue Chen
  *
  * This program is free software: you can redistribute it and/or modify
@@ -16,15 +15,35 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "operand.hpp"
-#include "minicut-main.h"
-#include "minicut-mini.h"
+#include <stddef.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
-MC_test (operand_test)
+int
+main (int argc, char *argv[])
 {
-  MC_assert (1);
-  REG r = REG_INVALID ();
-  MC_assert (!r);
-  OP op;
-  printf("\n%s\n", OP_ToString(op).c_str());
+  size_t sum = 0;
+  size_t size = 1000;
+  size_t *b = malloc (size * sizeof (*b));
+  size_t *a = malloc (size * sizeof (*a));
+
+  for (size_t i = 0; i < size; ++i)
+    {
+      b[i] = size - i - 1;
+    }
+  for (size_t i = 0; i < size; ++i)
+    {
+      a[i] = 1;
+    }
+
+  for (size_t i = 0; i < size; ++i)
+    {
+      sum += a[b[i]];
+    }
+
+  /* memset (b, 0, size * sizeof (*b)); */
+
+  printf ("a %p, b %p, sum %zu\n", a, b, sum);
+  return 0;
 }

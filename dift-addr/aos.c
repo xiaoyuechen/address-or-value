@@ -16,13 +16,33 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef PROPAGATION_H
-#define PROPAGATION_H
+#include <stddef.h>
+#include <stdio.h>
+#include <stdlib.h>
 
-#include "pin.H"
+typedef struct S
+{
+  size_t dummy;
+  size_t val;
+} S;
 
-VOID PG_InstrumentPropagation (INS ins);
+int
+main (int argc, char *argv[argc + 1])
+{
+  const size_t size = 1000;
+  size_t sum = 0;
+  S **ss = malloc (sizeof (ss) * size);
+  for (size_t i = 0; i < size; ++i)
+    {
+      S *s = malloc (sizeof (*s));
+      s->val = 1;
+      ss[i] = s;
+    }
 
-VOID PG_Fini (INT32 code, VOID*);
+  for (size_t i = 0; i < size; ++i)
+    {
+      sum += ss[i]->val;
+    }
 
-#endif
+  printf ("s %p sum %zu\n", ss, sum);
+}

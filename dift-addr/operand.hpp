@@ -16,8 +16,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef OPERAND_H
-#define OPERAND_H
+#ifndef OPERAND_HPP
+#define OPERAND_HPP
 
 #include "pin.H"
 #include <cstdint>

@@ -30,28 +30,31 @@
 #define TT_NUM_TAINT 16
 #endif
 
-typedef struct Propagator Propagator;
+typedef struct PG_Propagator PG_Propagator;
 
-Propagator *CreatePropagator ();
+PG_Propagator *PG_CreatePropagator ();
 
-void DestroyPropagator (Propagator *pg);
+void PG_DestroyPropagator (PG_Propagator *pg);
 
-void PropagateRegToReg (Propagator *pg, const uint32_t *w, size_t nw,
-                        const uint32_t *r, size_t nr);
+void PG_PropagateRegToReg (PG_Propagator *pg, const uint32_t *w, size_t nw,
+                           const uint32_t *r, size_t nr);
 
-void PropagateMemToReg (Propagator *pg, const uint32_t *reg_w, size_t nreg_w,
-                        const uint32_t *mem_r, size_t nmem_r, void *ea,
-                        bool should_track);
+void PG_PropagateMemToReg (PG_Propagator *pg, const uint32_t *reg_w,
+                           size_t nreg_w, const uint32_t *mem_r, size_t nmem_r,
+                           void *ea, bool should_track);
 
-void PropagateRegToMem (Propagator *pg, const uint32_t *mem_w, size_t nmem_w,
-                        const uint32_t *reg_r, size_t nreg_r, void *ea);
+void PG_PropagateRegToMem (PG_Propagator *pg, const uint32_t *mem_w,
+                           size_t nmem_w, const uint32_t *reg_r, size_t nreg_r,
+                           void *ea);
 
-void PropagateClear (Propagator *pg, uint32_t r);
+void PG_PropagateRegClear (PG_Propagator *pg, uint32_t r);
 
-void PropagateExchange (Propagator *pg, uint32_t r1, uint32_t r2);
+void PG_PropagateRegExchange (PG_Propagator *pg, uint32_t r1, uint32_t r2);
 
-size_t AddressCount (const Propagator *pg);
+size_t PG_AddressCount (const PG_Propagator *pg);
 
-size_t CopyAddresses (const Propagator *pg, void **dst);
+size_t PG_CopyAddresses (const PG_Propagator *pg, void **dst);
+
+size_t PG_TaintExhaustionCount (const PG_Propagator *pg);
 
 #endif

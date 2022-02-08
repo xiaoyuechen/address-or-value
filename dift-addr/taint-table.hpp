@@ -16,8 +16,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef TAINT_TABLE_H
-#define TAINT_TABLE_H
+#ifndef TAINT_TABLE_HPP
+#define TAINT_TABLE_HPP
 
 #include <algorithm>
 #include <bitset>

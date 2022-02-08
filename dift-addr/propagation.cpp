@@ -19,22 +19,35 @@
 #include "propagation.h"
 
 #include "taint-table.hpp"
+#include <algorithm>
 #include <set>
 
 static constexpr size_t TT_TMP_ROW = TT_NUM_ROW + 1;
 using PG_TAINT_TABLE = TAINT_TABLE<TT_TMP_ROW + 1, TT_NUM_TAINT>;
 using PG_ADDR_SET = std::set<void *>;
 
-struct Propagator
+struct PG_Propagator
 {
-  PG_TAINT_TABLE tt;
-  void *tea[TT_NUM_TAINT];
-  PG_ADDR_SET addr_set;
+  PG_TAINT_TABLE tt{};
+  void *tea[TT_NUM_TAINT] = {};
+  PG_ADDR_SET addr_set{};
 };
 
+PG_Propagator *
+PG_CreatePropagator ()
+{
+  return new PG_Propagator{};
+}
+
 void
-PropagateRegToReg (Propagator *pg, const uint32_t *w, size_t nw,
-                   const uint32_t *r, size_t nr)
+PG_DestroyPropagator (PG_Propagator *pg)
+{
+  delete pg;
+}
+
+void
+PG_PropagateRegToReg (PG_Propagator *pg, const uint32_t *w, size_t nw,
+                      const uint32_t *r, size_t nr)
 {
   PG_TAINT_TABLE &tt = pg->tt;
   for (size_t i = 0; i < nr; ++i)
@@ -50,9 +63,9 @@ PropagateRegToReg (Propagator *pg, const uint32_t *w, size_t nw,
 }
 
 void
-PropagateMemToReg (Propagator *pg, const uint32_t *reg_w, size_t nreg_w,
-                   const uint32_t *mem_r, size_t nmem_r, void *ea,
-                   bool should_track)
+PG_PropagateMemToReg (PG_Propagator *pg, const uint32_t *reg_w, size_t nreg_w,
+                      const uint32_t *mem_r, size_t nmem_r, void *ea,
+                      bool should_track)
 {
   PG_TAINT_TABLE &tt = pg->tt;
   PG_ADDR_SET &addr_set = pg->addr_set;
@@ -83,8 +96,8 @@ PropagateMemToReg (Propagator *pg, const uint32_t *reg_w, size_t nreg_w,
 }
 
 void
-PropagateRegToMem (Propagator *pg, const uint32_t *mem_w, size_t nmem_w,
-                   const uint32_t *reg_r, size_t nreg_r, void *ea)
+PG_PropagateRegToMem (PG_Propagator *pg, const uint32_t *mem_w, size_t nmem_w,
+                      const uint32_t *reg_r, size_t nreg_r, void *ea)
 {
   PG_TAINT_TABLE &tt = pg->tt;
   PG_ADDR_SET &addr_set = pg->addr_set;
@@ -104,13 +117,13 @@ PropagateRegToMem (Propagator *pg, const uint32_t *mem_w, size_t nmem_w,
 }
 
 void
-PropagateRegClear (Propagator *pg, uint32_t r)
+PG_PropagateRegClear (PG_Propagator *pg, uint32_t r)
 {
   pg->tt.Diff (r, r, r);
 }
 
 void
-PropagateRegExchange (Propagator *pg, uint32_t r1, uint32_t r2)
+PG_PropagateRegExchange (PG_Propagator *pg, uint32_t r1, uint32_t r2)
 {
   PG_TAINT_TABLE &tt = pg->tt;
   tt.Union (TT_TMP_ROW, TT_TMP_ROW, r1);
@@ -119,4 +132,23 @@ PropagateRegExchange (Propagator *pg, uint32_t r1, uint32_t r2)
   tt.Diff (r2, r2, r2);
   tt.Union (r2, TT_TMP_ROW, TT_TMP_ROW);
   tt.Diff (TT_TMP_ROW, TT_TMP_ROW, TT_TMP_ROW);
+}
+
+size_t
+PG_AddressCount (const PG_Propagator *pg)
+{
+  return pg->addr_set.size ();
+}
+
+size_t
+PG_CopyAddresses (const PG_Propagator *pg, void **dst)
+{
+  std::copy (pg->addr_set.begin (), pg->addr_set.end (), dst);
+  return pg->addr_set.size ();
+}
+
+size_t
+PG_TaintExhaustionCount (const PG_Propagator *pg)
+{
+  return pg->tt.GetExhaustionCount ();
 }

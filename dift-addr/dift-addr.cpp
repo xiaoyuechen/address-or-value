@@ -20,25 +20,19 @@
 // pin.H must be included first
 #include "instlib.H"
 
-#include "operand.hpp"
-#include "propagation.hpp"
-#include "taint-table.hpp"
+#include "instrument-propagation.h"
 #include "types_foundation.PH"
 #include "types_vmapi.PH"
 #include "util.hpp"
 #include <algorithm>
-#include <fstream>
-#include <iostream>
+#include <cstdio>
 #include <map>
-#include <stdio.h>
 #include <types.h>
 
 #ifndef NUM_TAINT
 #define NUM_TAINT 16
 #endif
 
-using std::cerr;
-using std::endl;
 using std::string;
 
 /* ================================================================== */
@@ -47,12 +41,13 @@ using std::string;
 
 INSTLIB::FILTER filter;
 
-std::ostream *out = &cerr;
+FILE *out = stderr;
 
 /* ===================================================================== */
 // Command line switches
 /* ===================================================================== */
-KNOB<string> KnobOutputFile (KNOB_MODE_WRITEONCE, "pintool", "o", "",
+KNOB<string> KnobOutputFile (KNOB_MODE_WRITEONCE, "pintool", "o",
+                             "dift-addr.out",
                              "specify file name for dift-addr output");
 
 /* ===================================================================== */
@@ -65,12 +60,43 @@ KNOB<string> KnobOutputFile (KNOB_MODE_WRITEONCE, "pintool", "o", "",
 INT32
 Usage ()
 {
-  cerr << "This tool prints out the number of dynamically executed " << endl
-       << "instructions, basic blocks and threads in the application." << endl
-       << endl;
-
-  cerr << KNOB_BASE::StringKnobSummary () << endl;
+  fprintf (stderr, "%s%s\n",
+           "This tool prints out the addresses that contains addresses\n",
+           KNOB_BASE::StringKnobSummary ().c_str ());
   return -1;
+}
+
+VOID
+Banner ()
+{
+  fprintf (stderr, "===============================================\n"
+                   "This application is instrumented by dift-addr\n");
+  if (!KnobOutputFile.Value ().empty ())
+    {
+      fprintf (stderr, "See file %s for analysis results\n",
+               KnobOutputFile.Value ().c_str ());
+    }
+  fprintf (stderr, "===============================================\n");
+}
+
+VOID
+Init (int argc, char *argv[])
+{
+  PIN_InitSymbols ();
+  if (PIN_Init (argc, argv))
+    {
+      exit (Usage ());
+    }
+
+  string file_name = KnobOutputFile.Value ();
+  if (!file_name.empty ())
+    {
+      out = fopen (file_name.c_str (), "w");
+    }
+
+  filter.Activate ();
+
+  PG_Init (out);
 }
 
 /* ===================================================================== */
@@ -108,9 +134,11 @@ Trace (TRACE trace, VOID *val)
 VOID
 Fini (INT32 code, VOID *v)
 {
-  *out << "===============================================" << endl;
-  *out << "dift-addr analysis results: " << endl;
-  *out << "===============================================" << endl;
+  fprintf (out, "===============================================\n"
+                "dift-addr analysis results:\n"
+                "===============================================\n");
+  PG_Fini ();
+  fclose (out);
 }
 
 /*!
@@ -124,40 +152,12 @@ Fini (INT32 code, VOID *v)
 int
 main (int argc, char *argv[])
 {
-  PIN_InitSymbols ();
-  // Initialize PIN library. Print help message if -h(elp) is specified
-  // in the command line or the command line is invalid
-  if (PIN_Init (argc, argv))
-    {
-      return Usage ();
-    }
+  Init (argc, argv);
 
-  string file_name = KnobOutputFile.Value ();
-
-  if (!file_name.empty ())
-    {
-      out = new std::ofstream (file_name.c_str ());
-    }
-
-  // Register function to be called to instrument traces
-  // RTN_AddInstrumentFunction (TraceRoutine, 0);
   TRACE_AddInstrumentFunction (Trace, 0);
-  filter.Activate ();
-
-  // Register function to be called when the application exits
   PIN_AddFiniFunction (Fini, 0);
-  PIN_AddFiniFunction (PG_Fini, 0);
 
-  cerr << "===============================================" << endl;
-  cerr << "This application is instrumented by dift-addr" << endl;
-  if (!KnobOutputFile.Value ().empty ())
-    {
-      cerr << "See file " << KnobOutputFile.Value () << " for analysis results"
-           << endl;
-    }
-  cerr << "===============================================" << endl;
-
-  // Start the program, never returns
+  Banner ();
   PIN_StartProgram ();
 
   return 0;

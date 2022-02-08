@@ -27,9 +27,10 @@
 #include "xed-iclass-enum.h"
 #include "xed-reg-enum.h"
 #include <algorithm>
+#include <cstdarg>
+#include <cstddef>
+#include <cstdio>
 #include <set>
-#include <stddef.h>
-#include <stdio.h>
 #include <string>
 #include <types.h>
 #include <unordered_map>
@@ -38,10 +39,24 @@
 static constexpr size_t TT_NUM_TAINT = 16;
 static constexpr size_t TT_TMP_ROW = REG_GR_LAST + 1;
 static TAINT_TABLE<TT_TMP_ROW + 1, TT_NUM_TAINT> tt;
-static ADDRINT tea[TT_NUM_TAINT];
-static std::set<ADDRINT> addr_mem;
-static std::set<ADDRINT> addr_any;
-static std::unordered_map<ADDRINT, std::string> disassemble;
+static void *tea[TT_NUM_TAINT];
+static std::set<void *> addr_mem;
+static std::set<void *> addr_any;
+static std::unordered_map<void *, std::string> disassemble;
+
+struct RegArray
+{
+  static constexpr size_t MAX_NREG = 16;
+  REG data[MAX_NREG];
+  size_t size;
+};
+
+struct InsReg
+{
+  RegArray reg_w, reg_r, mem_w, mem_r;
+};
+
+static std::unordered_map<void *, InsReg> ins_reg_table;
 
 bool
 IsRegRelevant (REG reg)
@@ -92,6 +107,14 @@ FilterOp (OP *dst, const OP *const op, size_t n, OP_T type, OP_RW rw)
   return last - dst;
 }
 
+size_t
+FilterReg (REG *reg, size_t n)
+{
+  REG *last = std::remove_if (reg, reg + n,
+                              [] (REG reg) { return !IsRegRelevant (reg); });
+  return last - reg;
+}
+
 void
 TransformToFullReg (REG *dst, REG *const src, size_t n)
 {
@@ -136,53 +159,58 @@ CopyReg (REG *dst, const OP *const op, size_t n, OP_RW rw)
 }
 
 void
-PropagateMemToReg (REG reg_w1, REG reg_w2, REG mem_r1, REG mem_r2, ADDRINT ea)
+PropagateRegToReg (const uint32_t *w, size_t nw, const uint32_t *r, size_t nr)
 {
-  REG mem_r[] = { mem_r1, mem_r2 };
-  for (REG mem : mem_r)
+  for (size_t i = 0; i < nr; ++i)
     {
-      for (size_t t = 0; t < TT_NUM_TAINT; ++t)
+      tt.Union (TT_TMP_ROW, TT_TMP_ROW, r[i]);
+    }
+  for (size_t i = 0; i < nw; ++i)
+    {
+      tt.Diff (w[i], w[i], w[i]);
+      tt.Union (w[i], TT_TMP_ROW, TT_TMP_ROW);
+    }
+  tt.Diff (TT_TMP_ROW, TT_TMP_ROW, TT_TMP_ROW);
+}
+
+void
+PropagateMemToReg (const uint32_t *reg_w, size_t nreg_w, const uint32_t *mem_r,
+                   size_t nmem_r, void *ea, bool should_track)
+{
+  for (size_t i = 0; i < nmem_r; ++i)
+    for (size_t t = 0; t < TT_NUM_TAINT; ++t)
+      if (tt.IsTainted (mem_r[i], t))
         {
-          if (tt.IsTainted (mem, t))
-            {
-              tt.UntaintCol (t);
-              addr_mem.insert (tea[t]);
-            }
+          tt.UntaintCol (t);
+          addr_mem.insert (tea[t]);
         }
+
+  for (size_t i = 0; i < nreg_w; ++i)
+    {
+      tt.Diff (reg_w[i], reg_w[i], reg_w[i]);
     }
 
-  REG reg_w[] = { reg_w1, reg_w2 };
-  for (REG reg : reg_w)
-    {
-      if (IsRegRelevant (reg))
-        {
-          tt.Diff (reg, reg, reg);
-        }
-    }
-  if (mem_r1 != REG_RBP && mem_r1 != REG_RSP)
+  if (should_track)
     {
       size_t t = tt.NextAvailableTaint ();
       tea[t] = ea;
-      for (REG reg : reg_w)
+      for (size_t i = 0; i < nreg_w; ++i)
         {
-          if (IsRegRelevant (reg))
-            {
-              tt.Taint (reg, t);
-            }
+          tt.Taint (reg_w[i], t);
         }
     }
 }
 
 void
-PropagateRegToMem (REG mem_w1, REG mem_w2, REG reg_r1, REG reg_r2, ADDRINT ea)
+PropagateRegToMem (const uint32_t *mem_w, size_t nmem_w, const uint32_t *reg_r,
+                   size_t nreg_r, void *ea)
 {
   {
-    REG mem_w[] = { mem_w1, mem_w2 };
-    for (REG mem : mem_w)
+    for (size_t i = 0; i < nmem_w; ++i)
       {
         for (size_t t = 0; t < TT_NUM_TAINT; ++t)
           {
-            if (tt.IsTainted (mem, t))
+            if (tt.IsTainted (mem_w[i], t))
               {
                 tt.UntaintCol (t);
                 addr_mem.insert (tea[t]);
@@ -197,50 +225,30 @@ PropagateRegToMem (REG mem_w1, REG mem_w2, REG reg_r1, REG reg_r2, ADDRINT ea)
 }
 
 void
-PropagateRegToReg (REG w1, REG w2, REG r1, REG r2, REG r3)
-{
-  REG reg_w[] = { w1, w2 };
-  REG reg_r[] = { r1, r2, r3 };
-  for (REG r : reg_r)
-    {
-      tt.Union (TT_TMP_ROW, TT_TMP_ROW, r);
-    }
-  for (REG w : reg_w)
-    {
-      if (IsRegRelevant (w))
-        {
-          tt.Diff (w, w, w);
-          tt.Union (w, TT_TMP_ROW, TT_TMP_ROW);
-        }
-    }
-  tt.Diff (TT_TMP_ROW, TT_TMP_ROW, TT_TMP_ROW);
-}
-
-void
-PropagateClear (REG r)
+PropagateClear (uint32_t r)
 {
   tt.Diff (r, r, r);
 }
 
 void
-InsertAddr (ADDRINT addr)
+InsertAddr (void *addr)
 {
   addr_any.insert (addr);
 }
 
 void
-PrintPropagateDebugMsg (ADDRINT addr)
+PrintPropagateDebugMsg (void *addr)
 {
   std::string (*row_to_reg) (size_t)
       = [] (size_t row) { return "\t" + REG_StringShort ((REG)row) + "\t"; };
   printf ("%s\n%s", disassemble[addr].c_str (),
           tt.ToString (row_to_reg, REG_GR_BASE, REG_GR_LAST).c_str ());
-  printf ("\taddr ");
-  for (ADDRINT a : addr_mem)
+  printf ("\taddr { ");
+  for (void *a : addr_mem)
     {
-      printf ("%p ", (void *)a);
+      printf ("%p ", a);
     }
-  printf ("\n");
+  printf ("}\n");
 }
 
 void
@@ -249,63 +257,79 @@ PG_InstrumentPropagation (INS ins)
   if (!IsInsRelevant (ins))
     return;
 
-  disassemble[INS_Address (ins)] = INS_Disassemble (ins);
+  disassemble[(void *)INS_Address (ins)] = INS_Disassemble (ins);
 
-  tt.Diff (REG_INVALID (), REG_INVALID (), REG_INVALID ());
-
-  OP op[OP_MAX_OP_COUNT];
-  size_t nop = std::remove_if (op, op + INS_Operands (ins, op),
-                               [] (OP op) { return !IsOpRelevant (op); })
-               - op;
-
-  REG reg_r[OP_MAX_OP_COUNT] = {};
-  size_t nreg_r = CopyReg (reg_r, op, nop, OP_RW_R);
-  TransformToFullReg (reg_r, reg_r, nreg_r);
-
-  REG reg_w[OP_MAX_OP_COUNT] = {};
-  size_t nreg_w = CopyReg (reg_w, op, nop, OP_RW_W);
-  TransformToFullReg (reg_w, reg_w, nreg_w);
-
-  REG mem_r[OP_MAX_OP_COUNT] = {};
-  size_t nmem_r = CopyMemReg (mem_r, op, nop, OP_T_MEM, OP_RW_R);
-  TransformToFullReg (mem_r, mem_r, nmem_r);
-
-  REG mem_w[OP_MAX_OP_COUNT] = {};
-  size_t nmem_w = CopyMemReg (mem_w, op, nop, OP_T_MEM, OP_RW_W);
-  TransformToFullReg (mem_w, mem_w, nmem_w);
-
-  if (!nmem_r)
+  if (!ins_reg_table.count ((void *)INS_Address (ins)))
     {
-      INS_InsertCall (ins, IPOINT_BEFORE, (AFUNPTR)PropagateRegToReg,
-                      IARG_UINT32, reg_w[0], IARG_UINT32, reg_w[1],
-                      IARG_UINT32, reg_r[0], IARG_UINT32, reg_r[1],
-                      IARG_UINT32, reg_r[2], IARG_END);
+      InsReg &regs = ins_reg_table[(void *)INS_Address (ins)];
+      OP op[OP_MAX_OP_COUNT];
+      size_t nop = std::remove_if (op, op + INS_Operands (ins, op),
+                                   [] (OP op) { return !IsOpRelevant (op); })
+                   - op;
+
+      regs.reg_r.size = CopyReg (regs.reg_r.data, op, nop, OP_RW_R);
+      TransformToFullReg (regs.reg_r.data, regs.reg_r.data, regs.reg_r.size);
+
+      regs.reg_w.size = CopyReg (regs.reg_w.data, op, nop, OP_RW_W);
+      TransformToFullReg (regs.reg_w.data, regs.reg_w.data, regs.reg_w.size);
+
+      regs.mem_r.size
+          = CopyMemReg (regs.mem_r.data, op, nop, OP_T_MEM, OP_RW_R);
+      TransformToFullReg (regs.mem_r.data, regs.mem_r.data, regs.mem_r.size);
+
+      regs.mem_w.size
+          = CopyMemReg (regs.mem_w.data, op, nop, OP_T_MEM, OP_RW_W);
+      TransformToFullReg (regs.mem_w.data, regs.mem_w.data, regs.mem_w.size);
     }
 
-  if (INS_IsMemoryRead (ins))
+  const InsReg &regs = ins_reg_table[(void *)INS_Address (ins)];
+
+  if (!regs.mem_r.size)
     {
-      INS_InsertCall (ins, IPOINT_BEFORE, (AFUNPTR)PropagateMemToReg,
-                      IARG_UINT32, reg_w[0], IARG_UINT32, reg_w[1],
-                      IARG_UINT32, mem_r[0], IARG_UINT32, mem_r[1],
-                      IARG_MEMORYREAD_EA, IARG_END);
+      INS_InsertCall (
+          ins, IPOINT_BEFORE, (AFUNPTR)PropagateRegToReg,           //
+          IARG_PTR, regs.reg_w.data, IARG_ADDRINT, regs.reg_w.size, //
+          IARG_PTR, regs.reg_r.data, IARG_ADDRINT, regs.reg_r.size, //
+          IARG_END);
+    }
+
+  if (regs.mem_r.size)
+    {
+      // We do not care about tainting stack memory
+      bool should_track
+          = std::find_if (
+                regs.mem_r.data, regs.mem_r.data + regs.mem_r.size,
+                [] (REG mem) { return mem == REG_RBP || mem == REG_RSP; })
+            == regs.mem_r.data + regs.mem_r.size;
+
+      INS_InsertCall (
+          ins, IPOINT_BEFORE, (AFUNPTR)PropagateMemToReg,           //
+          IARG_PTR, regs.reg_w.data, IARG_ADDRINT, regs.reg_w.size, //
+          IARG_PTR, regs.mem_r.data, IARG_ADDRINT, regs.mem_r.size, //
+          IARG_MEMORYREAD_EA,                                       //
+          IARG_BOOL, should_track,                                  //
+          IARG_END);
       INS_InsertCall (ins, IPOINT_BEFORE, (AFUNPTR)InsertAddr,
                       IARG_MEMORYREAD_EA, IARG_END);
     }
 
-  if (INS_IsMemoryWrite (ins))
+  if (regs.mem_w.size)
     {
-      INS_InsertCall (ins, IPOINT_BEFORE, (AFUNPTR)PropagateRegToMem,
-                      IARG_UINT32, mem_w[0], IARG_UINT32, mem_w[1],
-                      IARG_UINT32, reg_r[0], IARG_UINT32, reg_r[1],
-                      IARG_MEMORYWRITE_EA, IARG_END);
+      INS_InsertCall (
+          ins, IPOINT_BEFORE, (AFUNPTR)PropagateRegToMem,           //
+          IARG_PTR, regs.mem_w.data, IARG_ADDRINT, regs.mem_w.size, //
+          IARG_PTR, regs.reg_r.data, IARG_ADDRINT, regs.reg_r.size, //
+          IARG_MEMORYWRITE_EA,                                      //
+          IARG_END);
       INS_InsertCall (ins, IPOINT_BEFORE, (AFUNPTR)InsertAddr,
                       IARG_MEMORYWRITE_EA, IARG_END);
     }
 
-  if (INS_Opcode (ins) == XED_ICLASS_XOR && reg_r[0] == reg_w[0])
+  if (INS_Opcode (ins) == XED_ICLASS_XOR && regs.reg_r.size && regs.reg_w.size
+      && regs.reg_r.data[0] == regs.reg_w.data[0])
     {
       INS_InsertCall (ins, IPOINT_BEFORE, (AFUNPTR)PropagateClear, IARG_UINT32,
-                      reg_r[0], IARG_END);
+                      regs.reg_r.data[0], IARG_END);
     }
 
   // INS_InsertCall (ins, IPOINT_BEFORE, (AFUNPTR)PrintPropagateDebugMsg,
@@ -317,8 +341,8 @@ PG_Fini (INT32 code, VOID *)
 {
   printf ("%zu addresses out of %zu; %zu exhaustion\n", addr_mem.size (),
           addr_any.size (), tt.GetExhaustionCount ());
-  for (ADDRINT a : addr_mem)
+  for (void *a : addr_mem)
     {
-      printf ("%p\n", (void *)a);
+      printf ("%p\n", a);
     }
 }

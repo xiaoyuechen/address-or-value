@@ -84,8 +84,8 @@ all.utest.test: $(UTEST_ROOTS:%=%.utest.test)
 %.utest.test: $(OBJDIR)%.utest
 	$(SET_DLL_PATH) $<
 
-a-b-i.test: $(OBJDIR)dift-addr$(PINTOOL_SUFFIX)
-	$(PIN) -t $(OBJDIR)dift-addr.so -filter_no_shared_libs -filter_rtn main -- ../sample-programs/a-b-i &> $(OBJDIR)$@.out
+a-b-i.test: $(OBJDIR)dift-addr$(PINTOOL_SUFFIX) $(OBJDIR)a-b-i$(EXE_SUFFIX)
+	$(PIN) -t $(OBJDIR)dift-addr.so -filter_no_shared_libs -- $(OBJDIR)a-b-i$(EXE_SUFFIX) &> $(OBJDIR)$@.out
 
 fibonacci.test: $(OBJDIR)dift-addr$(PINTOOL_SUFFIX) $(OBJDIR)fibonacci$(EXE_SUFFIX)
 	$(PIN) -t $(OBJDIR)dift-addr$(PINTOOL_SUFFIX) -filter_no_shared_libs -- $(OBJDIR)fibonacci$(EXE_SUFFIX) 1000 &> $(OBJDIR)$@.out

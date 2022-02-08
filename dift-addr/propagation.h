@@ -19,9 +19,16 @@
 #ifndef PROPAGATION_H
 #define PROPAGATION_H
 
-#include <cstddef>
 #include <stddef.h>
 #include <stdint.h>
+
+#ifndef TT_NUM_ROW
+#define TT_NUM_ROW 32
+#endif
+
+#ifndef TT_NUM_TAINT
+#define TT_NUM_TAINT 16
+#endif
 
 typedef struct Propagator Propagator;
 

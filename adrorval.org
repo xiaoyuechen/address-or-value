@@ -1,8 +1,17 @@
-* Questions
+* Discoveries
+  - Many memory addresses are stored in memory. Especially in OOP.
+
+* DONE Questions
   - [ ] Should we track all the PCs of the use of an address?
   - [ ] How do addresses and PCs associate?
     - ~addr: {(PC_l, PC_u), ...}~
     - ~(PC_l, PC_u): {addr, ...}~
+  - [X] Which of the three options for the stack addresses?
+    - Treat stack memory exactly the same
+    - [X] Do not track stack memory entirely
+    - Use special data structure to track stack memory
+  - [X] What to do with calls such as ~free~? \\
+    For now, we do not care. Use the lazy approach.
 
 * Program
 ** DONE DIFT algorithm design

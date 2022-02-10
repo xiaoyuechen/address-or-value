@@ -24,7 +24,7 @@ int
 main (int argc, char *argv[])
 {
   size_t sum = 0;
-  size_t size = 100;
+  size_t size = 10000;
   size_t *b = malloc (size * sizeof (*b));
   size_t *a = malloc (size * sizeof (*a));
 
@@ -44,6 +44,6 @@ main (int argc, char *argv[])
 
   /* memset (b, 0, size * sizeof (*b)); */
 
-  printf ("[a %p, b %p, sum %zu]\n", a, b, sum);
+  printf ("a %p, b %p, sum %zu\n", a, b, sum);
   return 0;
 }

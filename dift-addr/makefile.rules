@@ -85,10 +85,10 @@ all.utest.test: $(UTEST_ROOTS:%=%.utest.test)
 	$(SET_DLL_PATH) $<
 
 a-b-i.test: $(OBJDIR)dift-addr$(PINTOOL_SUFFIX) $(OBJDIR)a-b-i$(EXE_SUFFIX)
-	$(PIN) -t $(OBJDIR)dift-addr.so -filter_no_shared_libs -- $(OBJDIR)a-b-i$(EXE_SUFFIX) &> $(OBJDIR)$@.out
+	$(PIN) -t $(OBJDIR)dift-addr.so -filter_no_shared_libs -- $(OBJDIR)a-b-i$(EXE_SUFFIX)
 
 fibonacci.test: $(OBJDIR)dift-addr$(PINTOOL_SUFFIX) $(OBJDIR)fibonacci$(EXE_SUFFIX)
-	$(PIN) -t $(OBJDIR)dift-addr$(PINTOOL_SUFFIX) -filter_no_shared_libs -- $(OBJDIR)fibonacci$(EXE_SUFFIX) 1000 &> $(OBJDIR)$@.out
+	$(PIN) -t $(OBJDIR)dift-addr$(PINTOOL_SUFFIX) -filter_no_shared_libs -- $(OBJDIR)fibonacci$(EXE_SUFFIX) 1000
 
 aos.test: $(OBJDIR)dift-addr$(PINTOOL_SUFFIX) $(OBJDIR)aos$(EXE_SUFFIX)
 	$(PIN) -t $(OBJDIR)dift-addr$(PINTOOL_SUFFIX) -filter_no_shared_libs -- $(OBJDIR)aos$(EXE_SUFFIX)
@@ -114,7 +114,7 @@ $(OBJDIR)operand$(OBJ_SUFFIX): operand.cpp operand.hpp
 
 $(OBJDIR)propagation$(OBJ_SUFFIX): propagation.cpp propagation.h taint-table.hpp
 
-$(OBJDIR)instrument-propagation$(OBJ_SUFFIX): instrument-propagation.cpp propagation.h operand.hpp
+$(OBJDIR)instrument-propagation$(OBJ_SUFFIX): instrument-propagation.cpp propagation.h operand.hpp util.hpp
 
 $(OBJDIR)dift-addr$(PINTOOL_SUFFIX): $(OBJDIR)dift-addr$(OBJ_SUFFIX) $(OBJDIR)operand$(OBJ_SUFFIX) \
 $(OBJDIR)instrument-propagation$(OBJ_SUFFIX) $(OBJDIR)propagation$(OBJ_SUFFIX) $(OBJDIR)util$(OBJ_SUFFIX)

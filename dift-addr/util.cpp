@@ -42,7 +42,7 @@ UT_InsOpString (INS ins)
 }
 
 const char *
-StripPath (const char *path)
+UT_StripPath (const char *path)
 {
   const char *file = strrchr (path, '/');
   if (file)
@@ -64,7 +64,7 @@ UT_InsRtnString (INS ins, RTN rtn)
       if (IMG_Valid (img))
         {
           offset += snprintf (buff + offset, MAX_CHAR_COUNT - offset, "%s:%s ",
-                              StripPath (IMG_Name (img).c_str ()),
+                              UT_StripPath (IMG_Name (img).c_str ()),
                               RTN_Name (rtn).c_str ());
         }
     }

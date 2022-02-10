@@ -25,6 +25,7 @@
 #include "types_vmapi.PH"
 #include "util.hpp"
 #include <algorithm>
+#include <cstddef>
 #include <cstdio>
 #include <map>
 #include <types.h>
@@ -48,7 +49,11 @@ FILE *out = stderr;
 /* ===================================================================== */
 KNOB<string> KnobOutputFile (KNOB_MODE_WRITEONCE, "pintool", "o",
                              "dift-addr.out",
-                             "specify file name for dift-addr output");
+                             "The output file name for dift-addr");
+
+KNOB<size_t> KnobWarmupInsCount (
+    KNOB_MODE_WRITEONCE, "pintool", "warmup", "0",
+    "The number of warmup instructions before any dumping");
 
 /* ===================================================================== */
 // Utilities
@@ -96,7 +101,9 @@ Init (int argc, char *argv[])
 
   filter.Activate ();
 
-  PG_Init (out);
+  PG_Init ();
+  PG_SetDumpFile (out);
+  PG_SetWarmup (KnobWarmupInsCount.Value ());
 }
 
 /* ===================================================================== */

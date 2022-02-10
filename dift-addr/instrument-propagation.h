@@ -20,12 +20,17 @@
 #define INSTRUMENT_PROPAGATION_H
 
 #include "pin.H"
+#include <stddef.h>
 #include <stdio.h>
 
-VOID PG_Init (FILE *out);
+void PG_Init ();
 
-VOID PG_InstrumentPropagation (INS ins);
+void PG_SetDumpFile(FILE* file);
 
-VOID PG_Fini ();
+void PG_SetWarmup(size_t n);
+
+void PG_InstrumentPropagation (INS ins);
+
+void PG_Fini ();
 
 #endif

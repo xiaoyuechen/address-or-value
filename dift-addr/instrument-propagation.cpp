@@ -23,35 +23,49 @@
 #include "types_base.PH"
 #include "types_core.PH"
 #include "types_vmapi.PH"
+#include "util.hpp"
 #include "xed-iclass-enum.h"
 #include "xed-reg-enum.h"
 #include <algorithm>
 #include <cstddef>
 #include <cstdio>
+#include <hash_set>
+#include <list>
 #include <set>
+#include <stl/_hash_set.h>
 #include <string>
 #include <types.h>
-#include <unordered_map>
-#include <vector>
 
-static FILE *out;
-static PG_PROPAGATOR *pg;
-static std::set<void *> addr_any;
-static std::unordered_map<void *, std::string> disassemble;
-
-struct RegArray
+struct REG_ARRAY
 {
   static constexpr size_t MAX_NREG = 16;
   REG data[MAX_NREG];
   size_t size;
 };
 
-struct InsReg
+struct INS_REG
 {
-  RegArray reg_w, reg_r, mem_w, mem_r;
+  REG_ARRAY reg_w, reg_r, mem_w, mem_r;
 };
 
-static std::unordered_map<void *, InsReg> ins_reg_table;
+struct INS_INFO
+{
+  void *addr;
+  INS_REG regs;
+  std::string disassemble;
+  std::string rtn;
+  std::string img;
+};
+
+static FILE *out;
+static size_t warmup;
+static PG_PROPAGATOR *pg;
+static std::hash_set<void *> addr_any;
+static std::hash_set<void *> addr_mem;
+static std::hash_set<void *> ins_addr;
+static std::list<INS_INFO> ins_info;
+static const INS_INFO *current_ins_info;
+static size_t nexecuted;
 
 bool
 IsRegRelevant (REG reg)
@@ -160,9 +174,9 @@ InsertAddr (void *addr)
 }
 
 void
-PrintPropagateDebugMsg (void *addr)
+PrintPropagateDebugMsg (const INS_INFO *ins_info)
 {
-  fprintf (out, "%s\n", disassemble[addr].c_str ());
+  fprintf (out, "%s\n", ins_info->disassemble.c_str ());
   for (UINT32 r = REG_GR_BASE; r <= REG_GR_LAST; ++r)
     {
       char row_str[TT_NUM_TAINT + 1];
@@ -177,45 +191,109 @@ PrintPropagateDebugMsg (void *addr)
   fprintf (out, "\t%zu addr\n", PG_AddressCount (pg));
 }
 
-VOID
-PG_Init (FILE *out)
+void
+DumpState (const INS_INFO *info)
 {
-  ::out = out;
+  fprintf (out, "%zu,%zu,%p,%zu,%s,%s\n", nexecuted, addr_mem.size (),
+           info->addr, PG_TaintExhaustionCount (pg), info->img.c_str (),
+           info->rtn.c_str ());
+}
+
+void
+DumpSummary ()
+{
+  fprintf (out, "%zu addresses out of %zu; %zu exhaustion\n",
+           PG_AddressCount (pg), addr_any.size (),
+           PG_TaintExhaustionCount (pg));
+  for (void *a : addr_mem)
+    {
+      fprintf (out, "%p\n", a);
+    }
+}
+
+void
+OnAddrMark (void *ea, void *)
+{
+  addr_mem.insert (ea);
+  if (nexecuted > warmup)
+    DumpState (current_ins_info);
+}
+
+void
+OnAddrUnmark (void *ea, void *)
+{
+  addr_mem.erase (ea);
+  if (nexecuted > warmup)
+    DumpState (current_ins_info);
+}
+
+void
+PG_Init ()
+{
   pg = PG_CreatePropagator ();
+  PG_AddToAddressMarkHook (pg, OnAddrMark, 0);
+  PG_AddToAddressUnmarkHook (pg, OnAddrUnmark, 0);
+}
+
+void
+PG_SetDumpFile (FILE *file)
+{
+  ::out = file;
+}
+
+void
+PG_SetWarmup (size_t n)
+{
+  warmup = n;
 }
 
 void
 PG_InstrumentPropagation (INS ins)
 {
+  if (ins_addr.count ((void *)INS_Address (ins)))
+    return;
+
+  INS_InsertCall (
+      ins, IPOINT_BEFORE, (AFUNPTR)[] { ++nexecuted; }, IARG_END);
+
   if (!IsInsRelevant (ins))
     return;
 
-  disassemble[(void *)INS_Address (ins)] = INS_Disassemble (ins);
+  ins_info.push_back (INS_INFO ());
+  INS_INFO &info = ins_info.back ();
 
-  if (!ins_reg_table.count ((void *)INS_Address (ins)))
-    {
-      InsReg &regs = ins_reg_table[(void *)INS_Address (ins)];
-      OP op[OP_MAX_OP_COUNT];
-      size_t nop = std::remove_if (op, op + INS_Operands (ins, op),
-                                   [] (OP op) { return !IsOpRelevant (op); })
-                   - op;
+  void (*set_current_ins_info) (const INS_INFO *)
+      = [] (const INS_INFO *info) { current_ins_info = info; };
+  INS_InsertCall (ins, IPOINT_BEFORE, (AFUNPTR)set_current_ins_info, IARG_PTR,
+                  &info, IARG_END);
 
-      regs.reg_r.size = CopyReg (regs.reg_r.data, op, nop, OP_RW_R);
-      TransformToFullReg (regs.reg_r.data, regs.reg_r.data, regs.reg_r.size);
+  info.addr = (void *)INS_Address (ins);
+  info.disassemble = INS_Disassemble (ins);
+  info.rtn = RTN_Valid (INS_Rtn (ins)) ? RTN_Name (INS_Rtn (ins)) : "";
+  info.img
+      = RTN_Valid (INS_Rtn (ins))
+            ? IMG_Valid (SEC_Img (RTN_Sec (INS_Rtn (ins)))) ? UT_StripPath (
+                  IMG_Name (SEC_Img (RTN_Sec (INS_Rtn (ins)))).c_str ())
+                                                            : ""
+            : "";
 
-      regs.reg_w.size = CopyReg (regs.reg_w.data, op, nop, OP_RW_W);
-      TransformToFullReg (regs.reg_w.data, regs.reg_w.data, regs.reg_w.size);
+  INS_REG &regs = info.regs;
+  OP op[OP_MAX_OP_COUNT];
+  size_t nop = std::remove_if (op, op + INS_Operands (ins, op),
+                               [] (OP op) { return !IsOpRelevant (op); })
+               - op;
 
-      regs.mem_r.size
-          = CopyMemReg (regs.mem_r.data, op, nop, OP_T_MEM, OP_RW_R);
-      TransformToFullReg (regs.mem_r.data, regs.mem_r.data, regs.mem_r.size);
+  regs.reg_r.size = CopyReg (regs.reg_r.data, op, nop, OP_RW_R);
+  TransformToFullReg (regs.reg_r.data, regs.reg_r.data, regs.reg_r.size);
 
-      regs.mem_w.size
-          = CopyMemReg (regs.mem_w.data, op, nop, OP_T_MEM, OP_RW_W);
-      TransformToFullReg (regs.mem_w.data, regs.mem_w.data, regs.mem_w.size);
-    }
+  regs.reg_w.size = CopyReg (regs.reg_w.data, op, nop, OP_RW_W);
+  TransformToFullReg (regs.reg_w.data, regs.reg_w.data, regs.reg_w.size);
 
-  const InsReg &regs = ins_reg_table[(void *)INS_Address (ins)];
+  regs.mem_r.size = CopyMemReg (regs.mem_r.data, op, nop, OP_T_MEM, OP_RW_R);
+  TransformToFullReg (regs.mem_r.data, regs.mem_r.data, regs.mem_r.size);
+
+  regs.mem_w.size = CopyMemReg (regs.mem_w.data, op, nop, OP_T_MEM, OP_RW_W);
+  TransformToFullReg (regs.mem_w.data, regs.mem_w.data, regs.mem_w.size);
 
   if (!regs.mem_r.size)
     {
@@ -229,13 +307,6 @@ PG_InstrumentPropagation (INS ins)
 
   if (regs.mem_r.size)
     {
-      // We do not care about tainting stack memory
-      // bool should_track
-      //     = std::find_if (
-      //           regs.mem_r.data, regs.mem_r.data + regs.mem_r.size,
-      //           [] (REG mem) { return mem == REG_RBP || mem == REG_RSP; })
-      //       == regs.mem_r.data + regs.mem_r.size;
-
       INS_InsertCall (
           ins, IPOINT_BEFORE, (AFUNPTR)PG_PropagateMemToReg,        //
           IARG_PTR, pg,                                             //
@@ -268,21 +339,9 @@ PG_InstrumentPropagation (INS ins)
                       IARG_UINT32, regs.reg_r.data[0],                   //
                       IARG_END);
     }
-
-  // INS_InsertCall (ins, IPOINT_BEFORE, (AFUNPTR)PrintPropagateDebugMsg,
-  //                 IARG_ADDRINT, INS_Address (ins), IARG_END);
 }
 
-VOID
+void
 PG_Fini ()
 {
-  fprintf (out, "%zu addresses out of %zu; %zu exhaustion\n",
-           PG_AddressCount (pg), addr_any.size (),
-           PG_TaintExhaustionCount (pg));
-  std::vector<void *> addr_mem (PG_AddressCount (pg));
-  PG_CopyAddresses (pg, &addr_mem[0]);
-  for (void *a : addr_mem)
-    {
-      fprintf (out, "%p\n", a);
-    }
 }

@@ -188,7 +188,7 @@ PrintPropagateDebugMsg (const INS_INFO *ins_info)
       fprintf (out, "\t%s\t%s\n", REG_StringShort ((REG)r).c_str (), row_str);
     }
 
-  fprintf (out, "\t%zu addr\n", PG_AddressCount (pg));
+  fprintf (out, "\t%zu addr\n", addr_mem.size ());
 }
 
 void
@@ -202,9 +202,8 @@ DumpState (const INS_INFO *info)
 void
 DumpSummary ()
 {
-  fprintf (out, "%zu addresses out of %zu; %zu exhaustion\n",
-           PG_AddressCount (pg), addr_any.size (),
-           PG_TaintExhaustionCount (pg));
+  fprintf (out, "%zu addresses out of %zu; %zu exhaustion\n", addr_mem.size (),
+           addr_any.size (), PG_TaintExhaustionCount (pg));
   for (void *a : addr_mem)
     {
       fprintf (out, "%p\n", a);

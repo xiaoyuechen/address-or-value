@@ -27,7 +27,6 @@
 
 static constexpr size_t TT_TMP_ROW = TT_NUM_ROW + 1;
 using PG_TAINT_TABLE = TAINT_TABLE<TT_TMP_ROW + 1, TT_NUM_TAINT>;
-using PG_ADDR_SET = std::set<void *>;
 
 struct ADDRESS_CALLBACK
 {
@@ -48,8 +47,6 @@ struct PG_PROPAGATOR
 {
   PG_TAINT_TABLE tt{};
   void *tea[TT_NUM_TAINT] = {};
-  PG_ADDR_SET addr_set{};
-
   PG_ADDRESS_HOOK address_hook[PG_AH_COUNT];
 };
 
@@ -111,7 +108,6 @@ PG_PropagateMemToReg (PG_PROPAGATOR *pg, const uint32_t *reg_w, size_t nreg_w,
                       const uint32_t *mem_r, size_t nmem_r, void *ea)
 {
   PG_TAINT_TABLE &tt = pg->tt;
-  PG_ADDR_SET &addr_set = pg->addr_set;
   void **tea = pg->tea;
 
   for (size_t i = 0; i < nmem_r; ++i)
@@ -119,7 +115,6 @@ PG_PropagateMemToReg (PG_PROPAGATOR *pg, const uint32_t *reg_w, size_t nreg_w,
       if (tt.IsTainted (mem_r[i], t))
         {
           tt.UntaintCol (t);
-          addr_set.insert (tea[t]);
           InvokeAddressCallbacks (&pg->address_hook[PG_AH_MARK][0],
                                   pg->address_hook[PG_AH_MARK].size (),
                                   tea[t]);
@@ -143,7 +138,6 @@ PG_PropagateRegToMem (PG_PROPAGATOR *pg, const uint32_t *mem_w, size_t nmem_w,
                       const uint32_t *reg_r, size_t nreg_r, void *ea)
 {
   PG_TAINT_TABLE &tt = pg->tt;
-  PG_ADDR_SET &addr_set = pg->addr_set;
   void **tea = pg->tea;
 
   for (size_t i = 0; i < nmem_w; ++i)
@@ -151,19 +145,13 @@ PG_PropagateRegToMem (PG_PROPAGATOR *pg, const uint32_t *mem_w, size_t nmem_w,
       if (tt.IsTainted (mem_w[i], t))
         {
           tt.UntaintCol (t);
-          addr_set.insert (tea[t]);
           InvokeAddressCallbacks (&pg->address_hook[PG_AH_MARK][0],
                                   pg->address_hook[PG_AH_MARK].size (),
                                   tea[t]);
         }
 
-  auto it = addr_set.find (ea);
-  if (it != addr_set.end ())
-    {
-      addr_set.erase (ea);
-      InvokeAddressCallbacks (&pg->address_hook[PG_AH_UNMARK][0],
-                              pg->address_hook[PG_AH_UNMARK].size (), ea);
-    }
+  InvokeAddressCallbacks (&pg->address_hook[PG_AH_UNMARK][0],
+                          pg->address_hook[PG_AH_UNMARK].size (), ea);
 
   // TODO: Propagate to stack memory
 }
@@ -184,19 +172,6 @@ PG_PropagateRegExchange (PG_PROPAGATOR *pg, uint32_t r1, uint32_t r2)
   tt.Diff (r2, r2, r2);
   tt.Union (r2, TT_TMP_ROW, TT_TMP_ROW);
   tt.Diff (TT_TMP_ROW, TT_TMP_ROW, TT_TMP_ROW);
-}
-
-size_t
-PG_AddressCount (const PG_PROPAGATOR *pg)
-{
-  return pg->addr_set.size ();
-}
-
-size_t
-PG_CopyAddresses (const PG_PROPAGATOR *pg, void **dst)
-{
-  std::copy (pg->addr_set.begin (), pg->addr_set.end (), dst);
-  return pg->addr_set.size ();
 }
 
 size_t

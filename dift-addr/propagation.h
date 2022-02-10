@@ -58,10 +58,6 @@ void PG_PropagateRegClear (PG_PROPAGATOR *pg, uint32_t r);
 
 void PG_PropagateRegExchange (PG_PROPAGATOR *pg, uint32_t r1, uint32_t r2);
 
-size_t PG_AddressCount (const PG_PROPAGATOR *pg);
-
-size_t PG_CopyAddresses (const PG_PROPAGATOR *pg, void **dst);
-
 size_t PG_TaintExhaustionCount (const PG_PROPAGATOR *pg);
 
 bool PG_IsTainted (const PG_PROPAGATOR *pg, uint32_t r, uint32_t t);

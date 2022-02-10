@@ -112,7 +112,9 @@ $(OBJDIR)%.utest: $(OBJDIR)%.utest$(OBJ_SUFFIX) $(OBJDIR)%$(OBJ_SUFFIX)
 
 $(OBJDIR)operand$(OBJ_SUFFIX): operand.cpp operand.hpp
 
-$(OBJDIR)propagation$(OBJ_SUFFIX): propagation.cpp operand.hpp taint-table.hpp
+$(OBJDIR)propagation$(OBJ_SUFFIX): propagation.cpp propagation.h taint-table.hpp
+
+$(OBJDIR)instrument-propagation$(OBJ_SUFFIX): instrument-propagation.cpp propagation.h operand.hpp
 
 $(OBJDIR)dift-addr$(PINTOOL_SUFFIX): $(OBJDIR)dift-addr$(OBJ_SUFFIX) $(OBJDIR)operand$(OBJ_SUFFIX) \
 $(OBJDIR)instrument-propagation$(OBJ_SUFFIX) $(OBJDIR)propagation$(OBJ_SUFFIX) $(OBJDIR)util$(OBJ_SUFFIX)

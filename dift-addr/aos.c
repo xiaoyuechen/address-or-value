@@ -44,5 +44,5 @@ main (int argc, char *argv[argc + 1])
       sum += ss[i]->val;
     }
 
-  printf ("s %p sum %zu\n", ss, sum);
+  printf ("ss %p sum %zu\n", ss, sum);
 }

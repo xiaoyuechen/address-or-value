@@ -23,7 +23,6 @@
 #include "types_base.PH"
 #include "types_core.PH"
 #include "types_vmapi.PH"
-#include "util.hpp"
 #include "xed-iclass-enum.h"
 #include "xed-reg-enum.h"
 #include <algorithm>
@@ -36,7 +35,7 @@
 #include <vector>
 
 static FILE *out;
-static PG_Propagator *pg;
+static PG_PROPAGATOR *pg;
 static std::set<void *> addr_any;
 static std::unordered_map<void *, std::string> disassemble;
 
@@ -163,17 +162,19 @@ InsertAddr (void *addr)
 void
 PrintPropagateDebugMsg (void *addr)
 {
-  // std::string (*row_to_reg) (size_t)
-  //     = [] (size_t row) { return "\t" + REG_StringShort ((REG)row) + "\t";
-  //     };
-  // printf ("%s\n%s", disassemble[addr].c_str (),
-  //         tt.ToString (row_to_reg, REG_GR_BASE, REG_GR_LAST).c_str ());
-  // printf ("\taddr { ");
-  // for (void *a : addr_mem)
-  //   {
-  //     printf ("%p ", a);
-  //   }
-  // printf ("}\n");
+  fprintf (out, "%s\n", disassemble[addr].c_str ());
+  for (UINT32 r = REG_GR_BASE; r <= REG_GR_LAST; ++r)
+    {
+      char row_str[TT_NUM_TAINT + 1];
+      for (UINT32 t = 0; t < TT_NUM_TAINT; ++t)
+        {
+          row_str[t] = PG_IsTainted (pg, r, t) ? '+' : '-';
+        }
+      row_str[TT_NUM_TAINT] = 0;
+      fprintf (out, "\t%s\t%s\n", REG_StringShort ((REG)r).c_str (), row_str);
+    }
+
+  fprintf (out, "\t%zu addr\n", PG_AddressCount (pg));
 }
 
 VOID
@@ -229,11 +230,11 @@ PG_InstrumentPropagation (INS ins)
   if (regs.mem_r.size)
     {
       // We do not care about tainting stack memory
-      bool should_track
-          = std::find_if (
-                regs.mem_r.data, regs.mem_r.data + regs.mem_r.size,
-                [] (REG mem) { return mem == REG_RBP || mem == REG_RSP; })
-            == regs.mem_r.data + regs.mem_r.size;
+      // bool should_track
+      //     = std::find_if (
+      //           regs.mem_r.data, regs.mem_r.data + regs.mem_r.size,
+      //           [] (REG mem) { return mem == REG_RBP || mem == REG_RSP; })
+      //       == regs.mem_r.data + regs.mem_r.size;
 
       INS_InsertCall (
           ins, IPOINT_BEFORE, (AFUNPTR)PG_PropagateMemToReg,        //
@@ -241,7 +242,6 @@ PG_InstrumentPropagation (INS ins)
           IARG_PTR, regs.reg_w.data, IARG_ADDRINT, regs.reg_w.size, //
           IARG_PTR, regs.mem_r.data, IARG_ADDRINT, regs.mem_r.size, //
           IARG_MEMORYREAD_EA,                                       //
-          IARG_BOOL, should_track,                                  //
           IARG_END);
       INS_InsertCall (ins, IPOINT_BEFORE, (AFUNPTR)InsertAddr,
                       IARG_MEMORYREAD_EA, IARG_END);

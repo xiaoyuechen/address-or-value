@@ -19,6 +19,7 @@
 #ifndef PROPAGATION_H
 #define PROPAGATION_H
 
+#include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
 
@@ -27,34 +28,42 @@
 #endif
 
 #ifndef TT_NUM_TAINT
-#define TT_NUM_TAINT 16
+#define TT_NUM_TAINT 32
 #endif
 
-typedef struct PG_Propagator PG_Propagator;
+typedef struct PG_PROPAGATOR PG_PROPAGATOR;
 
-PG_Propagator *PG_CreatePropagator ();
+typedef void (*PG_ADDRESS_HOOK_FN) (void *ea, void *user_ptr);
 
-void PG_DestroyPropagator (PG_Propagator *pg);
+PG_PROPAGATOR *PG_CreatePropagator ();
 
-void PG_PropagateRegToReg (PG_Propagator *pg, const uint32_t *w, size_t nw,
+void PG_DestroyPropagator (PG_PROPAGATOR *pg);
+
+void PG_AddToAddressMarkHook (PG_PROPAGATOR *pg, PG_ADDRESS_HOOK_FN fn, void* user_ptr);
+
+void PG_AddToAddressUnmarkHook (PG_PROPAGATOR *pg, PG_ADDRESS_HOOK_FN fn, void* user_ptr);
+
+void PG_PropagateRegToReg (PG_PROPAGATOR *pg, const uint32_t *w, size_t nw,
                            const uint32_t *r, size_t nr);
 
-void PG_PropagateMemToReg (PG_Propagator *pg, const uint32_t *reg_w,
+void PG_PropagateMemToReg (PG_PROPAGATOR *pg, const uint32_t *reg_w,
                            size_t nreg_w, const uint32_t *mem_r, size_t nmem_r,
-                           void *ea, bool should_track);
+                           void *ea);
 
-void PG_PropagateRegToMem (PG_Propagator *pg, const uint32_t *mem_w,
+void PG_PropagateRegToMem (PG_PROPAGATOR *pg, const uint32_t *mem_w,
                            size_t nmem_w, const uint32_t *reg_r, size_t nreg_r,
                            void *ea);
 
-void PG_PropagateRegClear (PG_Propagator *pg, uint32_t r);
+void PG_PropagateRegClear (PG_PROPAGATOR *pg, uint32_t r);
 
-void PG_PropagateRegExchange (PG_Propagator *pg, uint32_t r1, uint32_t r2);
+void PG_PropagateRegExchange (PG_PROPAGATOR *pg, uint32_t r1, uint32_t r2);
 
-size_t PG_AddressCount (const PG_Propagator *pg);
+size_t PG_AddressCount (const PG_PROPAGATOR *pg);
 
-size_t PG_CopyAddresses (const PG_Propagator *pg, void **dst);
+size_t PG_CopyAddresses (const PG_PROPAGATOR *pg, void **dst);
 
-size_t PG_TaintExhaustionCount (const PG_Propagator *pg);
+size_t PG_TaintExhaustionCount (const PG_PROPAGATOR *pg);
+
+bool PG_IsTainted (const PG_PROPAGATOR *pg, uint32_t r, uint32_t t);
 
 #endif

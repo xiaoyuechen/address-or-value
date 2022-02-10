@@ -42,7 +42,7 @@ main (int argc, char *argv[])
       sum += a[b[i]];
     }
 
-  /* memset (b, 0, size * sizeof (*b)); */
+  memset (b, 0, size * sizeof (*b));
 
   printf ("a %p, b %p, sum %zu\n", a, b, sum);
   return 0;

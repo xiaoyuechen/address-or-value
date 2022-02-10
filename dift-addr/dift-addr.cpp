@@ -101,9 +101,9 @@ Init (int argc, char *argv[])
 
   filter.Activate ();
 
-  PG_Init ();
   PG_SetDumpFile (out);
   PG_SetWarmup (KnobWarmupInsCount.Value ());
+  PG_Init ();
 }
 
 /* ===================================================================== */
@@ -141,9 +141,6 @@ Trace (TRACE trace, VOID *val)
 VOID
 Fini (INT32 code, VOID *v)
 {
-  fprintf (out, "===============================================\n"
-                "dift-addr analysis results:\n"
-                "===============================================\n");
   PG_Fini ();
   fclose (out);
 }

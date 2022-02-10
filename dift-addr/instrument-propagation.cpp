@@ -192,11 +192,17 @@ PrintPropagateDebugMsg (const INS_INFO *ins_info)
 }
 
 void
+DumpHeader ()
+{
+  fprintf (out, "executed,addr_mem,addr_any,ins_addr,exhaustion,img,rtn\n");
+}
+
+void
 DumpState (const INS_INFO *info)
 {
-  fprintf (out, "%zu,%zu,%p,%zu,%s,%s\n", nexecuted, addr_mem.size (),
-           info->addr, PG_TaintExhaustionCount (pg), info->img.c_str (),
-           info->rtn.c_str ());
+  fprintf (out, "%zu,%zu,%zu,%p,%zu,%s,%s\n", nexecuted, addr_mem.size (),
+           addr_any.size (), info->addr, PG_TaintExhaustionCount (pg),
+           info->img.c_str (), info->rtn.c_str ());
 }
 
 void
@@ -232,6 +238,7 @@ PG_Init ()
   pg = PG_CreatePropagator ();
   PG_AddToAddressMarkHook (pg, OnAddrMark, 0);
   PG_AddToAddressUnmarkHook (pg, OnAddrUnmark, 0);
+  DumpHeader ();
 }
 
 void

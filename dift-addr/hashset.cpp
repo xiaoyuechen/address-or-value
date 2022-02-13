@@ -16,18 +16,25 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef INSTRUMENT_PROPAGATION_H
-#define INSTRUMENT_PROPAGATION_H
+#include <algorithm>
+#include <cstddef>
+#include <cstdio>
+#include <cstdlib>
+#include <unordered_set>
 
-#include "pin.H"
+int
+main (int argc, char *argv[])
+{
+  size_t size = 1000;
+  // int *a = (int *)malloc (sizeof (*a) * size);
+  // for (size_t i = 0; i < size; ++i)
+  //   {
+  //     a[i] = size - i - 1;
+  //   }
 
-#include <stddef.h>
-#include <stdio.h>
-
-void PG_Init (FILE* dump_file, size_t nwarmup_ins);
-
-void PG_InstrumentPropagation (INS ins);
-
-void PG_Fini ();
-
-#endif
+  std::unordered_set<int> set;
+  for (size_t i = 0; i < size; ++i)
+    {
+      set.insert (i);
+    }
+}

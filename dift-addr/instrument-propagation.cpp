@@ -20,21 +20,15 @@
 
 #include "operand.hpp"
 #include "propagation.h"
-#include "types_base.PH"
-#include "types_core.PH"
-#include "types_vmapi.PH"
 #include "util.hpp"
 #include "xed-iclass-enum.h"
 #include "xed-reg-enum.h"
 #include <algorithm>
 #include <cstddef>
 #include <cstdio>
-#include <hash_set>
 #include <list>
-#include <set>
-#include <stl/_hash_set.h>
 #include <string>
-#include <types.h>
+#include <unordered_set>
 
 struct REG_ARRAY
 {
@@ -60,9 +54,10 @@ struct INS_INFO
 static FILE *out;
 static size_t warmup;
 static PG_PROPAGATOR *pg;
-static std::hash_set<void *> addr_any;
-static std::hash_set<void *> addr_mem;
-static std::hash_set<void *> ins_addr;
+using ADDR_SET = std::tr1::unordered_set<void *>;
+static ADDR_SET addr_any;
+static ADDR_SET addr_mem;
+static ADDR_SET ins_addr;
 static std::list<INS_INFO> ins_info;
 static const INS_INFO *current_ins_info;
 static size_t nexecuted;
@@ -168,6 +163,41 @@ CopyReg (REG *dst, const OP *const op, size_t n, OP_RW rw)
 }
 
 void
+InitInsReg (INS_REG *regs, INS ins)
+{
+  OP op[OP_MAX_OP_COUNT];
+  size_t nop = std::remove_if (op, op + INS_Operands (ins, op),
+                               [] (OP op) { return !IsOpRelevant (op); })
+               - op;
+  regs->reg_r.size = CopyReg (regs->reg_r.data, op, nop, OP_RW_R);
+  TransformToFullReg (regs->reg_r.data, regs->reg_r.data, regs->reg_r.size);
+
+  regs->reg_w.size = CopyReg (regs->reg_w.data, op, nop, OP_RW_W);
+  TransformToFullReg (regs->reg_w.data, regs->reg_w.data, regs->reg_w.size);
+
+  regs->mem_r.size = CopyMemReg (regs->mem_r.data, op, nop, OP_T_MEM, OP_RW_R);
+  TransformToFullReg (regs->mem_r.data, regs->mem_r.data, regs->mem_r.size);
+
+  regs->mem_w.size = CopyMemReg (regs->mem_w.data, op, nop, OP_T_MEM, OP_RW_W);
+  TransformToFullReg (regs->mem_w.data, regs->mem_w.data, regs->mem_w.size);
+}
+
+void
+InitInsInfo (INS_INFO *info, INS ins)
+{
+  info->addr = (void *)INS_Address (ins);
+  info->disassemble = INS_Disassemble (ins);
+  info->rtn = RTN_Valid (INS_Rtn (ins)) ? RTN_Name (INS_Rtn (ins)) : "";
+  info->img
+      = RTN_Valid (INS_Rtn (ins))
+            ? IMG_Valid (SEC_Img (RTN_Sec (INS_Rtn (ins)))) ? UT_StripPath (
+                  IMG_Name (SEC_Img (RTN_Sec (INS_Rtn (ins)))).c_str ())
+                                                            : ""
+            : "";
+  InitInsReg (&info->regs, ins);
+}
+
+void
 InsertAddr (void *addr)
 {
   addr_any.insert (addr);
@@ -219,38 +249,35 @@ DumpSummary ()
 void
 OnAddrMark (void *ea, void *)
 {
-  addr_mem.insert (ea);
-  if (nexecuted > warmup)
-    DumpState (current_ins_info);
+  if (!addr_mem.count (ea))
+    {
+      addr_mem.insert (ea);
+      if (nexecuted > warmup)
+        DumpState (current_ins_info);
+    }
 }
 
 void
 OnAddrUnmark (void *ea, void *)
 {
-  addr_mem.erase (ea);
-  if (nexecuted > warmup)
-    DumpState (current_ins_info);
+  if (addr_mem.count (ea))
+    {
+      addr_mem.erase (ea);
+      if (nexecuted > warmup)
+        DumpState (current_ins_info);
+    }
 }
 
 void
-PG_Init ()
+PG_Init (FILE *dump_file, size_t nwarmup_ins)
 {
+  out = dump_file;
+  warmup = nwarmup_ins;
+
   pg = PG_CreatePropagator ();
   PG_AddToAddressMarkHook (pg, OnAddrMark, 0);
   PG_AddToAddressUnmarkHook (pg, OnAddrUnmark, 0);
   DumpHeader ();
-}
-
-void
-PG_SetDumpFile (FILE *file)
-{
-  ::out = file;
-}
-
-void
-PG_SetWarmup (size_t n)
-{
-  warmup = n;
 }
 
 void
@@ -260,89 +287,75 @@ PG_InstrumentPropagation (INS ins)
     return;
 
   INS_InsertCall (
-      ins, IPOINT_BEFORE, (AFUNPTR)[] { ++nexecuted; }, IARG_END);
+      ins, IPOINT_BEFORE, (AFUNPTR)(void (*) ())[] { ++nexecuted; }, IARG_END);
 
   if (!IsInsRelevant (ins))
     return;
 
   ins_info.push_back (INS_INFO ());
   INS_INFO &info = ins_info.back ();
+  InitInsInfo (&info, ins);
 
-  void (*set_current_ins_info) (const INS_INFO *)
-      = [] (const INS_INFO *info) { current_ins_info = info; };
-  INS_InsertCall (ins, IPOINT_BEFORE, (AFUNPTR)set_current_ins_info, IARG_PTR,
-                  &info, IARG_END);
-
-  info.addr = (void *)INS_Address (ins);
-  info.disassemble = INS_Disassemble (ins);
-  info.rtn = RTN_Valid (INS_Rtn (ins)) ? RTN_Name (INS_Rtn (ins)) : "";
-  info.img
-      = RTN_Valid (INS_Rtn (ins))
-            ? IMG_Valid (SEC_Img (RTN_Sec (INS_Rtn (ins)))) ? UT_StripPath (
-                  IMG_Name (SEC_Img (RTN_Sec (INS_Rtn (ins)))).c_str ())
-                                                            : ""
-            : "";
+  INS_InsertCall (
+      ins, IPOINT_BEFORE,
+      (AFUNPTR)(void (*) (const INS_INFO *))[](const INS_INFO *info) {
+        current_ins_info = info;
+      },
+      IARG_PTR, &info, IARG_END);
 
   INS_REG &regs = info.regs;
-  OP op[OP_MAX_OP_COUNT];
-  size_t nop = std::remove_if (op, op + INS_Operands (ins, op),
-                               [] (OP op) { return !IsOpRelevant (op); })
-               - op;
-
-  regs.reg_r.size = CopyReg (regs.reg_r.data, op, nop, OP_RW_R);
-  TransformToFullReg (regs.reg_r.data, regs.reg_r.data, regs.reg_r.size);
-
-  regs.reg_w.size = CopyReg (regs.reg_w.data, op, nop, OP_RW_W);
-  TransformToFullReg (regs.reg_w.data, regs.reg_w.data, regs.reg_w.size);
-
-  regs.mem_r.size = CopyMemReg (regs.mem_r.data, op, nop, OP_T_MEM, OP_RW_R);
-  TransformToFullReg (regs.mem_r.data, regs.mem_r.data, regs.mem_r.size);
-
-  regs.mem_w.size = CopyMemReg (regs.mem_w.data, op, nop, OP_T_MEM, OP_RW_W);
-  TransformToFullReg (regs.mem_w.data, regs.mem_w.data, regs.mem_w.size);
-
   if (!regs.mem_r.size)
     {
       INS_InsertCall (
-          ins, IPOINT_BEFORE, (AFUNPTR)PG_PropagateRegToReg,        //
-          IARG_PTR, pg,                                             //
-          IARG_PTR, regs.reg_w.data, IARG_ADDRINT, regs.reg_w.size, //
-          IARG_PTR, regs.reg_r.data, IARG_ADDRINT, regs.reg_r.size, //
+          ins, IPOINT_BEFORE,                                       /**/
+          (AFUNPTR)PG_PropagateRegToReg,                            /**/
+          IARG_PTR, pg,                                             /**/
+          IARG_PTR, regs.reg_w.data, IARG_ADDRINT, regs.reg_w.size, /**/
+          IARG_PTR, regs.reg_r.data, IARG_ADDRINT, regs.reg_r.size, /**/
           IARG_END);
     }
 
   if (regs.mem_r.size)
     {
       INS_InsertCall (
-          ins, IPOINT_BEFORE, (AFUNPTR)PG_PropagateMemToReg,        //
-          IARG_PTR, pg,                                             //
-          IARG_PTR, regs.reg_w.data, IARG_ADDRINT, regs.reg_w.size, //
-          IARG_PTR, regs.mem_r.data, IARG_ADDRINT, regs.mem_r.size, //
-          IARG_MEMORYREAD_EA,                                       //
+          ins, IPOINT_BEFORE,                                       /**/
+          (AFUNPTR)PG_PropagateMemToReg,                            /**/
+          IARG_PTR, pg,                                             /**/
+          IARG_PTR, regs.reg_w.data, IARG_ADDRINT, regs.reg_w.size, /**/
+          IARG_PTR, regs.mem_r.data, IARG_ADDRINT, regs.mem_r.size, /**/
+          IARG_MEMORYREAD_EA,                                       /**/
           IARG_END);
-      INS_InsertCall (ins, IPOINT_BEFORE, (AFUNPTR)InsertAddr,
-                      IARG_MEMORYREAD_EA, IARG_END);
+
+      INS_InsertCall (ins, IPOINT_BEFORE,  /**/
+                      (AFUNPTR)InsertAddr, /**/
+                      IARG_MEMORYREAD_EA,  /**/
+                      IARG_END);
     }
 
   if (regs.mem_w.size)
     {
       INS_InsertCall (
-          ins, IPOINT_BEFORE, (AFUNPTR)PG_PropagateRegToMem,        //
-          IARG_PTR, pg,                                             //
-          IARG_PTR, regs.mem_w.data, IARG_ADDRINT, regs.mem_w.size, //
-          IARG_PTR, regs.reg_r.data, IARG_ADDRINT, regs.reg_r.size, //
-          IARG_MEMORYWRITE_EA,                                      //
+          ins, IPOINT_BEFORE,                                       /**/
+          (AFUNPTR)PG_PropagateRegToMem,                            /**/
+          IARG_PTR, pg,                                             /**/
+          IARG_PTR, regs.mem_w.data, IARG_ADDRINT, regs.mem_w.size, /**/
+          IARG_PTR, regs.reg_r.data, IARG_ADDRINT, regs.reg_r.size, /**/
+          IARG_MEMORYWRITE_EA,                                      /**/
           IARG_END);
-      INS_InsertCall (ins, IPOINT_BEFORE, (AFUNPTR)InsertAddr,
-                      IARG_MEMORYWRITE_EA, IARG_END);
+
+      INS_InsertCall (ins, IPOINT_BEFORE,  /**/
+                      (AFUNPTR)InsertAddr, /**/
+                      IARG_MEMORYWRITE_EA, /**/
+                      IARG_END);
     }
 
   if (INS_Opcode (ins) == XED_ICLASS_XOR && regs.reg_r.size && regs.reg_w.size
       && regs.reg_r.data[0] == regs.reg_w.data[0])
     {
-      INS_InsertCall (ins, IPOINT_BEFORE, (AFUNPTR)PG_PropagateRegClear, //
-                      IARG_PTR, pg,                                      //
-                      IARG_UINT32, regs.reg_r.data[0],                   //
+      INS_InsertCall (ins, IPOINT_BEFORE,              /**/
+                      (AFUNPTR)PG_PropagateRegClear,   /**/
+                      IARG_PTR, pg,                    /**/
+                      IARG_UINT32, regs.reg_r.data[0], /**/
                       IARG_END);
     }
 }
@@ -350,4 +363,5 @@ PG_InstrumentPropagation (INS ins)
 void
 PG_Fini ()
 {
+  PG_DestroyPropagator (pg);
 }

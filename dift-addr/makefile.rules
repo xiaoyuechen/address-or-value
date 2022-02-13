@@ -40,7 +40,7 @@ TOOL_ROOTS := dift-addr
 SA_TOOL_ROOTS :=
 
 # This defines all the applications that will be run during the tests.
-APP_ROOTS := a-b-i fibonacci aos
+APP_ROOTS := a-b-i fibonacci aos sort
 
 # This defines any additional object files that need to be compiled.
 OBJECT_ROOTS :=
@@ -93,6 +93,12 @@ fibonacci.test: $(OBJDIR)dift-addr$(PINTOOL_SUFFIX) $(OBJDIR)fibonacci$(EXE_SUFF
 aos.test: $(OBJDIR)dift-addr$(PINTOOL_SUFFIX) $(OBJDIR)aos$(EXE_SUFFIX)
 	$(PIN) -t $(OBJDIR)dift-addr$(PINTOOL_SUFFIX) -filter_no_shared_libs -- $(OBJDIR)aos$(EXE_SUFFIX)
 
+sort.test: $(OBJDIR)dift-addr$(PINTOOL_SUFFIX) $(OBJDIR)sort$(EXE_SUFFIX)
+	$(PIN) -t $(OBJDIR)dift-addr$(PINTOOL_SUFFIX) -filter_no_shared_libs -- $(OBJDIR)sort$(EXE_SUFFIX)
+
+hashset.test: $(OBJDIR)dift-addr$(PINTOOL_SUFFIX) $(OBJDIR)hashset$(EXE_SUFFIX)
+	$(PIN) -t $(OBJDIR)dift-addr$(PINTOOL_SUFFIX) -filter_no_shared_libs -- $(OBJDIR)hashset$(EXE_SUFFIX)
+
 ##############################################################
 #
 # Build rules
@@ -101,9 +107,6 @@ aos.test: $(OBJDIR)dift-addr$(PINTOOL_SUFFIX) $(OBJDIR)aos$(EXE_SUFFIX)
 
 # This section contains the build rules for all binaries that have special build rules.
 # See makefile.default.rules for the default build rules.
-
-$(OBJDIR)%$(EXE_SUFFIX): %.cpp
-	$(APP_CXX) $(APP_CXXFLAGS) $(COMP_EXE)$@ $< $(APP_LDFLAGS) $(APP_LIBS) $(CXX_LPATHS) $(CXX_LIBS)
 
 utests: dir $(UTESTS)
 

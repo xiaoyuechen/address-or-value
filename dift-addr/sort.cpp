@@ -16,18 +16,24 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef INSTRUMENT_PROPAGATION_H
-#define INSTRUMENT_PROPAGATION_H
+#include <algorithm>
+#include <cstddef>
+#include <cstdio>
 
-#include "pin.H"
+int
+main (int argc, char *argv[])
+{
+  size_t size = 10000;
+  int *a = new int[size];
+  for (size_t i = 0; i < size; ++i)
+    {
+      a[i] = size - i - 1;
+    }
+  std::sort (a, a + size);
+  for (size_t i = 0; i < size; ++i)
+    {
+      printf ("%d\n", a[i]);
+    }
 
-#include <stddef.h>
-#include <stdio.h>
-
-void PG_Init (FILE* dump_file, size_t nwarmup_ins);
-
-void PG_InstrumentPropagation (INS ins);
-
-void PG_Fini ();
-
-#endif
+  delete[] a;
+}

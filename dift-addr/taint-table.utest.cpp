@@ -1,6 +1,8 @@
 /*
- * dift-addr --- DIFT on memory addresses
+ * dift-addr --- Dynamic Information Flow Tracking on memory ADDResses
  * Copyright (C) 2022  Xiaoyue Chen
+ *
+ * This file is part of dift-addr.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by

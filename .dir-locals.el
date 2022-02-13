@@ -3,4 +3,6 @@
 
 (("dift-addr"
   . ((nil
-      . ((one-line-description . "dift-addr --- DIFT on memory addresses"))))))
+      . ((lice:program-name . "dift-addr")
+         (lice:program-description
+          . "dift-addr --- Dynamic Information Flow Tracking on memory ADDResses"))))))

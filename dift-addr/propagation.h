@@ -1,6 +1,8 @@
 /*
- * dift-addr --- DIFT on memory addresses
+ * dift-addr --- Dynamic Information Flow Tracking on memory ADDResses
  * Copyright (C) 2022  Xiaoyue Chen
+ *
+ * This file is part of dift-addr.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -39,9 +41,11 @@ PG_PROPAGATOR *PG_CreatePropagator ();
 
 void PG_DestroyPropagator (PG_PROPAGATOR *pg);
 
-void PG_AddToAddressMarkHook (PG_PROPAGATOR *pg, PG_ADDRESS_HOOK_FN fn, void* user_ptr);
+void PG_AddToAddressMarkHook (PG_PROPAGATOR *pg, PG_ADDRESS_HOOK_FN fn,
+                              void *user_ptr);
 
-void PG_AddToAddressUnmarkHook (PG_PROPAGATOR *pg, PG_ADDRESS_HOOK_FN fn, void* user_ptr);
+void PG_AddToAddressUnmarkHook (PG_PROPAGATOR *pg, PG_ADDRESS_HOOK_FN fn,
+                                void *user_ptr);
 
 void PG_PropagateRegToReg (PG_PROPAGATOR *pg, const uint32_t *w, size_t nw,
                            const uint32_t *r, size_t nr);

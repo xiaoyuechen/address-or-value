@@ -28,6 +28,8 @@
    - [ ] Store tuples :: ~<pc_ld, pc_use, addr>~
    - [ ] Instrument the entire program ::
    - [ ] Multi-theaded program support :: Optional, lower priority
+   - [ ] Propagate to memory ::
+   - [ ] Control flow marking ::
 
 ** TODO Test the program
    - [ ] Unit tests :: Write some unit tests to ensure individual

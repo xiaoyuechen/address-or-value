@@ -26,7 +26,15 @@
 #include <stddef.h>
 #include <stdio.h>
 
-void PG_Init (FILE *dump_file, size_t nwarmup_ins);
+void PG_Init ();
+
+void PG_SetDumpFile (FILE *file);
+
+void PG_SetDumpPeriod (size_t every_nins);
+
+void PG_SetWarmup (size_t nins);
+
+void PG_DumpHeader ();
 
 void PG_InstrumentPropagation (INS ins);
 

@@ -53,8 +53,10 @@ struct INS_INFO
   std::string img;
 };
 
-static FILE *out;
-static size_t warmup;
+static FILE *out = stderr;
+static size_t warmup = 0;
+static size_t period = 1;
+static size_t last_dump_nexecuted = 0;
 static PG_PROPAGATOR *pg;
 using ADDR_SET = std::tr1::unordered_set<void *>;
 static ADDR_SET addr_any;
@@ -251,34 +253,62 @@ DumpSummary ()
 void
 OnAddrMark (void *ea, void *)
 {
-  if (!addr_mem.count (ea))
+  auto it = addr_mem.find (ea);
+  if (it == addr_mem.end ())
     {
       addr_mem.insert (ea);
-      if (nexecuted > warmup)
-        DumpState (current_ins_info);
+      if (nexecuted > warmup && nexecuted - last_dump_nexecuted >= period)
+        {
+          DumpState (current_ins_info);
+          last_dump_nexecuted = nexecuted;
+        }
     }
 }
 
 void
 OnAddrUnmark (void *ea, void *)
 {
-  if (addr_mem.count (ea))
+  auto it = addr_mem.find (ea);
+  if (it != addr_mem.end ())
     {
-      addr_mem.erase (ea);
-      if (nexecuted > warmup)
-        DumpState (current_ins_info);
+      addr_mem.erase (it);
+      if (nexecuted > warmup && nexecuted - last_dump_nexecuted >= period)
+        {
+          DumpState (current_ins_info);
+          last_dump_nexecuted = nexecuted;
+        }
     }
 }
 
 void
-PG_Init (FILE *dump_file, size_t nwarmup_ins)
+PG_Init ()
 {
-  out = dump_file;
-  warmup = nwarmup_ins;
-
   pg = PG_CreatePropagator ();
   PG_AddToAddressMarkHook (pg, OnAddrMark, 0);
   PG_AddToAddressUnmarkHook (pg, OnAddrUnmark, 0);
+}
+
+void
+PG_SetDumpFile (FILE *file)
+{
+  out = file;
+}
+
+void
+PG_SetDumpPeriod (size_t every_nins)
+{
+  period = every_nins;
+}
+
+void
+PG_SetWarmup (size_t nins)
+{
+  warmup = nins;
+}
+
+void
+PG_DumpHeader ()
+{
   DumpHeader ();
 }
 

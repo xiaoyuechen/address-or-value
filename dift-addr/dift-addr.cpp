@@ -41,9 +41,12 @@ KNOB<string> KnobOutputFile (KNOB_MODE_WRITEONCE, "pintool", "o",
                              "dift-addr.out",
                              "The output file name for dift-addr");
 
-KNOB<size_t>
-    KnobWarmupIns (KNOB_MODE_WRITEONCE, "pintool", "warmup", "0",
-                   "The number of warmup instructions before any dumping");
+KNOB<size_t> KnobWarmupIns (
+    KNOB_MODE_WRITEONCE, "pintool", "warmup", "0",
+    "Do not dump before WARMUP number of instructions have been executed");
+
+KNOB<size_t> KnobDumpPeriod (KNOB_MODE_WRITEONCE, "pintool", "dumpperiod", "1",
+                             "Dump every DUMPPERIOD instructions");
 
 int
 Usage ()
@@ -83,7 +86,11 @@ Init (int argc, char *argv[])
 
   filter.Activate ();
 
-  PG_Init (out, KnobWarmupIns.Value ());
+  PG_Init ();
+  PG_SetDumpFile (out);
+  PG_SetWarmup (KnobWarmupIns.Value ());
+  PG_SetDumpPeriod (KnobDumpPeriod.Value ());
+  PG_DumpHeader ();
 }
 
 void

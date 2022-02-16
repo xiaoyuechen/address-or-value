@@ -105,61 +105,6 @@ hashset.test: $(OBJDIR)hashset$(EXE_SUFFIX)
 ls.test:
 	$(PIN) -t $(OBJDIR)dift-addr$(PINTOOL_SUFFIX) -o "$@.out" -dumpperiod 10000 -- ls -tal
 
-perlbench-checkspam.test:
-	$(PIN) -t $(OBJDIR)dift-addr$(PINTOOL_SUFFIX) -o "$@.out" -dumpperiod 10000 -- \
-"$(BENCH_ROOT)/perlbench" -I"$(BENCH_ROOT)/lib" "$(BENCH_ROOT)/checkspam.pl" 2500 5 25 11 150 1 1 1 1
-
-perlbench-diffmail.test:
-	$(PIN) -t $(OBJDIR)dift-addr$(PINTOOL_SUFFIX) -o "$@.out" -dumpperiod 10000 -- \
-"$(BENCH_ROOT)/perlbench" -I"$(BENCH_ROOT)/lib" "$(BENCH_ROOT)/diffmail.pl" 4 800 10 17 19 300
-
-perlbench-splitmail.test:
-	$(PIN) -t $(OBJDIR)dift-addr$(PINTOOL_SUFFIX) -o "$@.out" -dumpperiod 10000 -- \
-"$(BENCH_ROOT)/perlbench" -I"$(BENCH_ROOT)/lib" "$(BENCH_ROOT)/splitmail.pl" 1600 12 26 16 4500
-
-bzip2-chicken.test:
-	$(PIN) -t $(OBJDIR)dift-addr$(PINTOOL_SUFFIX) -o "$@.out" -dumpperiod 10000 -- \
-"$(BENCH_ROOT)/bzip2" "$(BENCH_ROOT)/chicken.jpg 30"
-
-bzip2-liberty.test:
-	$(PIN) -t $(OBJDIR)dift-addr$(PINTOOL_SUFFIX) -o "$@.out" -dumpperiod 10000 -- \
-"$(BENCH_ROOT)/bzip2" "$(BENCH_ROOT)/liberty.jpg 30"
-
-bzip2-program.test:
-	$(PIN) -t $(OBJDIR)dift-addr$(PINTOOL_SUFFIX) -o "$@.out" -dumpperiod 10000 -- \
-"$(BENCH_ROOT)/bzip2" "$(BENCH_ROOT)/input.program 280"
-
-bzip2-text.test:
-	$(PIN) -t $(OBJDIR)dift-addr$(PINTOOL_SUFFIX) -o "$@.out" -dumpperiod 10000 -- \
-"$(BENCH_ROOT)/bzip2" "$(BENCH_ROOT)/text.html 280"
-
-gcc-%.test:
-	$(PIN) -t $(OBJDIR)dift-addr$(PINTOOL_SUFFIX) -o "$@.out" -dumpperiod 10000 -- \
-"$(BENCH_ROOT)/gcc" "$(BENCH_ROOT)/$*.i"  -o "$*.s"
-
-bwaves:
-	$(PIN) -t $(OBJDIR)dift-addr$(PINTOOL_SUFFIX) -o "$@.out" -dumpperiod 10000 -- \
-"$(BENCH_ROOT)/bwaves"
-
-gamess-cytosine:
-	$(PIN) -t $(OBJDIR)dift-addr$(PINTOOL_SUFFIX) -o "$@.out" -dumpperiod 10000 -- \
-"$(BENCH_ROOT)/gamess" < "$(BENCH_ROOT)/cytosine.2.config"
-
-gamess-h2ocu2:
-	$(PIN) -t $(OBJDIR)dift-addr$(PINTOOL_SUFFIX) -o "$@.out" -dumpperiod 10000 -- \
-"$(BENCH_ROOT)/gamess" < "$(BENCH_ROOT)/h2ocu2+.gradient.config"
-
-gamess-triazolium:
-	$(PIN) -t $(OBJDIR)dift-addr$(PINTOOL_SUFFIX) -o "$@.out" -dumpperiod 10000 -- \
-"$(BENCH_ROOT)/gamess" < "$(BENCH_ROOT)/triazolium.config"
-
-mcf:
-	$(PIN) -t $(OBJDIR)dift-addr$(PINTOOL_SUFFIX) -o "$@.out" -dumpperiod 10000 -- \
-"$(BENCH_ROOT)/mcf" "$(BENCH_ROOT)/inp.in"
-
-milc:
-	$(PIN) -t $(OBJDIR)dift-addr$(PINTOOL_SUFFIX) -o "$@.out" -dumpperiod 10000 -- \
-"$(BENCH_ROOT)/milc" < "$(BENCH_ROOT)/su3imp.in"
 
 ##############################################################
 #

@@ -30,6 +30,7 @@
 #include <cstdio>
 #include <list>
 #include <string>
+#include <unordered_map>
 #include <unordered_set>
 
 struct REG_ARRAY
@@ -60,8 +61,10 @@ static size_t last_dump_nexecuted = 0;
 static PG_PROPAGATOR *pg;
 using ADDR_SET = std::tr1::unordered_set<void *>;
 static ADDR_SET addr_any;
-static ADDR_SET addr_mem;
 static ADDR_SET ins_addr;
+using ADDR_TAB = std::unordered_map<void *, void *>;
+static ADDR_TAB addr_mem_tab;
+
 static std::list<INS_INFO> ins_info;
 static const INS_INFO *current_ins_info;
 static size_t nexecuted;
@@ -222,7 +225,7 @@ PrintPropagateDebugMsg (const INS_INFO *ins_info)
       fprintf (out, "\t%s\t%s\n", REG_StringShort ((REG)r).c_str (), row_str);
     }
 
-  fprintf (out, "\t%zu addr\n", addr_mem.size ());
+  fprintf (out, "\t%zu addr\n", addr_mem_tab.size ());
 }
 
 void
@@ -234,7 +237,7 @@ DumpHeader ()
 void
 DumpState (const INS_INFO *info)
 {
-  fprintf (out, "%zu,%zu,%zu,%p,%zu,%s,%s\n", nexecuted, addr_mem.size (),
+  fprintf (out, "%zu,%zu,%zu,%p,%zu,%s,%s\n", nexecuted, addr_mem_tab.size (),
            addr_any.size (), info->addr, PG_TaintExhaustionCount (pg),
            info->img.c_str (), info->rtn.c_str ());
 }
@@ -242,21 +245,22 @@ DumpState (const INS_INFO *info)
 void
 DumpSummary ()
 {
-  fprintf (out, "%zu addresses out of %zu; %zu exhaustion\n", addr_mem.size (),
-           addr_any.size (), PG_TaintExhaustionCount (pg));
-  for (void *a : addr_mem)
+  fprintf (out, "%zu addresses out of %zu; %zu exhaustion\n",
+           addr_mem_tab.size (), addr_any.size (),
+           PG_TaintExhaustionCount (pg));
+  for (auto pair : addr_mem_tab)
     {
-      fprintf (out, "%p\n", a);
+      fprintf (out, "%p: %p\n", pair.first, pair.second);
     }
 }
 
 void
-OnAddrMark (void *ea, void *)
+OnAddrMark (void *from, void *val, void *)
 {
-  auto it = addr_mem.find (ea);
-  if (it == addr_mem.end ())
+  auto it = addr_mem_tab.find (from);
+  if (it == addr_mem_tab.end ())
     {
-      addr_mem.insert (ea);
+      addr_mem_tab[from] = val;
       if (nexecuted > warmup && nexecuted - last_dump_nexecuted >= period)
         {
           DumpState (current_ins_info);
@@ -268,10 +272,10 @@ OnAddrMark (void *ea, void *)
 void
 OnAddrUnmark (void *ea, void *)
 {
-  auto it = addr_mem.find (ea);
-  if (it != addr_mem.end ())
+  auto it = addr_mem_tab.find (ea);
+  if (it != addr_mem_tab.end ())
     {
-      addr_mem.erase (it);
+      addr_mem_tab.erase (it);
       if (nexecuted > warmup && nexecuted - last_dump_nexecuted >= period)
         {
           DumpState (current_ins_info);

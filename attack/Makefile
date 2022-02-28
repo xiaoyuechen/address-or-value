@@ -22,9 +22,16 @@ run-victim: victim
 	LD_LIBRARY_PATH=extern/lib ./victim
 
 instrument-victim: victim
-	 LD_LIBRARY_PATH=$$(LD_LIBRARY_PATH):extern/lib pin -t dift-addr.so -dumpperiod 1 -filter_rtn AES_encrypt -- ./victim
+	LD_LIBRARY_PATH=$${LD_LIBRARY_PATH}:extern/lib pin -t dift-addr.so -dumpperiod 1 -filter_rtn AES_encrypt -- ./victim
 
-plot-victim:
+run-simple-victim: simple-victim
+	./$<
+
+instrument-simple-victim: simple-victim
+	pin -t dift-addr.so -dumpperiod 1 -filter_rtn access -- ./$<
+
+.PHONY: plot
+plot:
 	../dift-addr/plot.py < dift-addr.out
 
 .PHONY: clean

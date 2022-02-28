@@ -35,16 +35,17 @@
 
 typedef struct PG_PROPAGATOR PG_PROPAGATOR;
 
-typedef void (*PG_ADDRESS_HOOK_FN) (void *ea, void *user_ptr);
+typedef void (*PG_ADDRESS_MARK_FN) (void *from, void *val, void *user_ptr);
+typedef void (*PG_ADDRESS_UNMARK_FN) (void *ea, void *user_ptr);
 
 PG_PROPAGATOR *PG_CreatePropagator ();
 
 void PG_DestroyPropagator (PG_PROPAGATOR *pg);
 
-void PG_AddToAddressMarkHook (PG_PROPAGATOR *pg, PG_ADDRESS_HOOK_FN fn,
+void PG_AddToAddressMarkHook (PG_PROPAGATOR *pg, PG_ADDRESS_MARK_FN fn,
                               void *user_ptr);
 
-void PG_AddToAddressUnmarkHook (PG_PROPAGATOR *pg, PG_ADDRESS_HOOK_FN fn,
+void PG_AddToAddressUnmarkHook (PG_PROPAGATOR *pg, PG_ADDRESS_UNMARK_FN fn,
                                 void *user_ptr);
 
 void PG_PropagateRegToReg (PG_PROPAGATOR *pg, const uint32_t *w, size_t nw,

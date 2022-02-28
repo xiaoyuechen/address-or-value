@@ -15,22 +15,26 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <openssl/aes.h>
 #include <stddef.h>
+#include <stdlib.h>
 #include <stdio.h>
 
-const char key[16] = "sEcRet";
-char in[17] = {};
+static char s[] = "sEcRet";
+static unsigned char a[256 * 64];
+
+void
+access ()
+{
+  printf("%p\n", a);
+  for (size_t i = 0; i < sizeof (s); ++i)
+    {
+      asm volatile("movq (%0), %%rax\n" : : "c"(a + s[i] * 64) : "rax");
+    }
+}
 
 int
 main ()
 {
-  AES_KEY key_struct;
-  AES_set_encrypt_key ((const unsigned char *)key, 128, &key_struct);
-  for (size_t i = 0; i < 10; ++i)
-    {
-      AES_encrypt ((const unsigned char *)in, (unsigned char *)in,
-                   &key_struct);
-    }
-  printf ("%s\n", in);
+  access ();
+  exit (EXIT_SUCCESS);
 }

@@ -30,26 +30,27 @@
 static constexpr size_t TT_TMP_ROW = TT_NUM_ROW + 1;
 using PG_TAINT_TABLE = TAINT_TABLE<TT_TMP_ROW + 1, TT_NUM_TAINT>;
 
-struct ADDRESS_CALLBACK
+struct ADDRESS_MARK_CALLBACK
 {
-  PG_ADDRESS_HOOK_FN fn;
+  PG_ADDRESS_MARK_FN fn;
   void *user_ptr;
 };
 
-using PG_ADDRESS_HOOK = std::vector<ADDRESS_CALLBACK>;
-
-enum ADDRESS_HOOK_TYPE
+struct ADDRESS_UNMARK_CALLBACK
 {
-  PG_AH_MARK,
-  PG_AH_UNMARK,
-  PG_AH_COUNT,
+  PG_ADDRESS_UNMARK_FN fn;
+  void *user_ptr;
 };
+
+using PG_ADDRESS_MARK_HOOK = std::vector<ADDRESS_MARK_CALLBACK>;
+using PG_ADDRESS_UNMARK_HOOK = std::vector<ADDRESS_UNMARK_CALLBACK>;
 
 struct PG_PROPAGATOR
 {
   PG_TAINT_TABLE tt{};
   void *tea[TT_NUM_TAINT] = {};
-  PG_ADDRESS_HOOK address_hook[PG_AH_COUNT];
+  PG_ADDRESS_MARK_HOOK addr_mark_hook;
+  PG_ADDRESS_UNMARK_HOOK addr_unmark_hook;
 };
 
 PG_PROPAGATOR *
@@ -65,26 +66,36 @@ PG_DestroyPropagator (PG_PROPAGATOR *pg)
 }
 
 void
-PG_AddToAddressMarkHook (PG_PROPAGATOR *pg, PG_ADDRESS_HOOK_FN fn,
+PG_AddToAddressMarkHook (PG_PROPAGATOR *pg, PG_ADDRESS_MARK_FN fn,
                          void *user_ptr)
 {
-  pg->address_hook[PG_AH_MARK].emplace_back (ADDRESS_CALLBACK{ fn, user_ptr });
+  pg->addr_mark_hook.emplace_back (ADDRESS_MARK_CALLBACK{ fn, user_ptr });
 }
 
 void
-PG_AddToAddressUnmarkHook (PG_PROPAGATOR *pg, PG_ADDRESS_HOOK_FN fn,
+PG_AddToAddressUnmarkHook (PG_PROPAGATOR *pg, PG_ADDRESS_UNMARK_FN fn,
                            void *user_ptr)
 {
-  pg->address_hook[PG_AH_UNMARK].emplace_back (
-      ADDRESS_CALLBACK{ fn, user_ptr });
+  pg->addr_unmark_hook.emplace_back (ADDRESS_UNMARK_CALLBACK{ fn, user_ptr });
 }
 
 void
-InvokeAddressCallbacks (const ADDRESS_CALLBACK *callback, size_t n, void *ea)
+InvokeAddressMarkCallback (const ADDRESS_MARK_CALLBACK *callback, size_t n,
+                           void *from, void *val)
 {
   for (size_t i = 0; i < n; ++i)
     {
-      callback[i].fn (ea, callback[i].user_ptr);
+      callback[i].fn (from, val, callback[i].user_ptr);
+    }
+}
+
+void
+InvokeAddressUnmarkCallback (const ADDRESS_UNMARK_CALLBACK *callback, size_t n,
+                             void *from)
+{
+  for (size_t i = 0; i < n; ++i)
+    {
+      callback[i].fn (from, callback[i].user_ptr);
     }
 }
 
@@ -117,9 +128,8 @@ PG_PropagateMemToReg (PG_PROPAGATOR *pg, const uint32_t *reg_w, size_t nreg_w,
       if (tt.IsTainted (mem_r[i], t))
         {
           tt.UntaintCol (t);
-          InvokeAddressCallbacks (&pg->address_hook[PG_AH_MARK][0],
-                                  pg->address_hook[PG_AH_MARK].size (),
-                                  tea[t]);
+          InvokeAddressMarkCallback (&pg->addr_mark_hook[0],
+                                     pg->addr_mark_hook.size (), tea[t], ea);
         }
 
   for (size_t i = 0; i < nreg_w; ++i)
@@ -147,13 +157,12 @@ PG_PropagateRegToMem (PG_PROPAGATOR *pg, const uint32_t *mem_w, size_t nmem_w,
       if (tt.IsTainted (mem_w[i], t))
         {
           tt.UntaintCol (t);
-          InvokeAddressCallbacks (&pg->address_hook[PG_AH_MARK][0],
-                                  pg->address_hook[PG_AH_MARK].size (),
-                                  tea[t]);
+          InvokeAddressMarkCallback (&pg->addr_mark_hook[0],
+                                     pg->addr_mark_hook.size (), tea[t], ea);
         }
 
-  InvokeAddressCallbacks (&pg->address_hook[PG_AH_UNMARK][0],
-                          pg->address_hook[PG_AH_UNMARK].size (), ea);
+  InvokeAddressUnmarkCallback (&pg->addr_unmark_hook[0],
+                               pg->addr_unmark_hook.size (), ea);
 
   // TODO: Propagate to stack memory
 }

@@ -20,79 +20,75 @@ MKDIR = /bin/mkdir
 SHELL = /bin/bash
 PIN = /opt/pin
 
-INSTRUMENT_CMD = $(PIN) -t dift-addr.so -o "results/$@.dump" -dumpperiod 10000 --
+INSTRUMENT_CMD = $(PIN) -t dift-addr.so -o "results/$@.dump" -dumpperiod 1000000 --
 PIPE = > results/$@.ref.out 2> results/$@.ref.err
 SELECTED = astar bwaves bzip2 calculix mcf omnetpp sjeng soplex sphinx # h264ref
 
-.PHONY: instrument-selected
-instrument-selected: $(SELECTED:%=%-instrument)
+.PHONY: selected
+selected: $(SELECTED)
 
 .PHONY: clean
 clean:; $(RM) -rf results
-
-.PHONY: %-instrument
-%-instrument: results-dir
-	$(INSTRUMENT_CMD) $* $(PIPE)
 
 .PHONY: results-dir
 results-dir:; [ -d results ] || $(MKDIR) results
 
 .PHONY: GemsFDTD
-GemsFDTD:; $@
+GemsFDTD:; $(INSTRUMENT_CMD) $@ $(PIPE)
 
 .PHONY: astar
-astar:; $@ BigLakes2048.cfg
+astar:; $(INSTRUMENT_CMD) $@ BigLakes2048.cfg $(PIPE)
 
 .PHONY: bwaves
-bwaves:; $@
+bwaves:; $(INSTRUMENT_CMD) $@ $(PIPE)
 
 .PHONY: bzip2
-bzip2:; $@ chicken.jpg 30
+bzip2:; $(INSTRUMENT_CMD) $@ chicken.jpg 30 $(PIPE)
 
 .PHONY: cactusADM
-cactusADM:; $@ benchADM.par
+cactusADM:; $(INSTRUMENT_CMD) $@ benchADM.par $(PIPE)
 
 .PHONY: calculix
-calculix:; $@ -i hyperviscoplastic
+calculix:; $(INSTRUMENT_CMD) $@ -i hyperviscoplastic $(PIPE)
 
 .PHONY: gamess
-gamess:; gamess < cytosine.2.config
+gamess:; $(INSTRUMENT_CMD) gamess < cytosine.2.config $(PIPE)
 
 .PHONY: gobmk
-gobmk:; gobmk --quiet --mode gtp < 13x13.tst
+gobmk:; $(INSTRUMENT_CMD) gobmk --quiet --mode gtp < 13x13.tst $(PIPE)
 
 .PHONY: gromacs
-gromacs:; gromacs -silent -deffnm gromacs -nice 0
+gromacs:; $(INSTRUMENT_CMD) gromacs -silent -deffnm gromacs -nice 0 $(PIPE)
 
 .PHONY: h264ref
-h264ref:; $@ foreman_ref_encoder_baseline.cfg
+h264ref:; $(INSTRUMENT_CMD) $@ foreman_ref_encoder_baseline.cfg $(PIPE)
 
 .PHONY: leslie3d
-leslie3d:; $@ < $@.in
+leslie3d:; $(INSTRUMENT_CMD) $@ < $@.in $(PIPE)
 
 .PHONY: libquantum
-libquantum:; $@ 1397 8
+libquantum:; $(INSTRUMENT_CMD) $@ 1397 8 $(PIPE)
 
 .PHONY: mcf
-mcf:; $@ "inp.in"
+mcf:; $(INSTRUMENT_CMD) $@ "inp.in" $(PIPE)
 
 .PHONY: milc
-milc:; $@ < "su3imp.in"
+milc:; $(INSTRUMENT_CMD) $@ < "su3imp.in" $(PIPE)
 
 .PHONY: named
-named:; $@ $@.input --iterations 38
+named:; $(INSTRUMENT_CMD) $@ $@.input --iterations 38 $(PIPE)
 
 .PHONY: omnetpp
-omnetpp:; $@ $@.ini
+omnetpp:; $(INSTRUMENT_CMD) $@ $@.ini $(PIPE)
 
 .PHONY: sjeng
-sjeng:; $@ ref.txt
+sjeng:; $(INSTRUMENT_CMD) $@ ref.txt $(PIPE)
 
 .PHONY: soplex
-soplex:; $@ -s1 -e -m45000 pds-50.mps
+soplex:; $(INSTRUMENT_CMD) $@ -s1 -e -m45000 pds-50.mps $(PIPE)
 
 .PHONY: sphinx
-sphinx:; $@ ctlfile . args.an4
+sphinx:; $(INSTRUMENT_CMD) $@ ctlfile . args.an4 $(PIPE)
 
 .PHONY: zeusmp
-zeusmp:; $@
+zeusmp:; $(INSTRUMENT_CMD) $@ $(PIPE)

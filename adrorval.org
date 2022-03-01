@@ -1,16 +1,26 @@
 * Discoveries
   - Many memory addresses are stored in memory. Especially in OOP.
+  - We can mark out _where_ and _what_ a program leaks.
 
-* DONE Questions
-  - [ ] Should we track all the PCs of the use of an address?
-  - [ ] How do addresses and PCs associate?
-    - ~addr: {(PC_l, PC_u), ...}~
-    - ~(PC_l, PC_u): {addr, ...}~
-  - [X] Which of the three options for the stack addresses?
-    - Treat stack memory exactly the same
-    - [X] Do not track stack memory entirely
+* Ideas and plans
+  - Rewrite the tool s.t. it depends only on free software
+  - Build the tool as a suite for security testing, we need:
+    - A way to mark out /secret watch region/
+    - A tracking mode that tracks only the /secret watch region/. It
+      would run way faster. Possibly usable at real-time?
+    - A more flexible way of plotting
+    - Accept user-defined functions to recover secrets
+    - Dumping data in a better way. Reduce redundancy. Maybe using
+      relational tables?
+    - Propagating into memory
+    - Make it easy to use
+
+* Questions
+  - Which of the three options for the stack addresses?
+    - [X] Treat stack memory exactly the same
+    - Do not track stack memory entirely
     - Use special data structure to track stack memory
-  - [X] What to do with calls such as ~free~? \\
+  - What to do with calls such as ~free~? \\
     For now, we do not care. Use the lazy approach.
 
 * Program
@@ -40,6 +50,7 @@
      the DIFT program gives reasonable outputs
 
 * Report
+** TODO Abstract
 ** TODO Introduction
 ** TODO Background
 ** TODO Methods

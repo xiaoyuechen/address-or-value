@@ -52,6 +52,7 @@ struct INS_INFO
   std::string disassemble;
   std::string rtn;
   std::string img;
+  void *load_offset;
 };
 
 static FILE *out = stderr;
@@ -195,12 +196,13 @@ InitInsInfo (INS_INFO *info, INS ins)
   info->addr = (void *)INS_Address (ins);
   info->disassemble = INS_Disassemble (ins);
   info->rtn = RTN_Valid (INS_Rtn (ins)) ? RTN_Name (INS_Rtn (ins)) : "";
-  info->img
-      = RTN_Valid (INS_Rtn (ins))
-            ? IMG_Valid (SEC_Img (RTN_Sec (INS_Rtn (ins)))) ? UT_StripPath (
-                  IMG_Name (SEC_Img (RTN_Sec (INS_Rtn (ins)))).c_str ())
-                                                            : ""
-            : "";
+  if (RTN_Valid (INS_Rtn (ins))
+      && IMG_Valid (SEC_Img (RTN_Sec (INS_Rtn (ins)))))
+    {
+      IMG img = SEC_Img (RTN_Sec (INS_Rtn (ins)));
+      info->img = UT_StripPath (IMG_Name (img).c_str ());
+      info->load_offset = (void *)IMG_LoadOffset (img);
+    }
   InitInsReg (&info->regs, ins);
 }
 
@@ -231,15 +233,26 @@ PrintPropagateDebugMsg (const INS_INFO *ins_info)
 void
 DumpHeader ()
 {
-  fprintf (out, "executed,addr_mem,addr_any,ins_addr,exhaustion,img,rtn\n");
+  fprintf (out, "executed,addr_mem,addr_any,ins_addr,exhaustion,img,rtn,load_"
+                "offset,from,val\n");
 }
 
 void
 DumpState (const INS_INFO *info)
 {
-  fprintf (out, "%zu,%zu,%zu,%p,%zu,%s,%s\n", nexecuted, addr_mem_tab.size (),
-           addr_any.size (), info->addr, PG_TaintExhaustionCount (pg),
-           info->img.c_str (), info->rtn.c_str ());
+  fprintf (out, "%zu,%zu,%zu,%p,%zu,%s,%s,%p\n", nexecuted,
+           addr_mem_tab.size (), addr_any.size (), info->addr,
+           PG_TaintExhaustionCount (pg), info->img.c_str (),
+           info->rtn.c_str (), info->load_offset);
+}
+
+void
+DumpDetailedState (const INS_INFO *info, void *from, void *val)
+{
+  fprintf (out, "%zu,%zu,%zu,%p,%zu,%s,%s,%p,%p,%p\n", nexecuted,
+           addr_mem_tab.size (), addr_any.size (), info->addr,
+           PG_TaintExhaustionCount (pg), info->img.c_str (),
+           info->rtn.c_str (), info->load_offset, from, val);
 }
 
 void
@@ -261,7 +274,11 @@ OnAddrMark (void *from, void *val, void *)
   if (it == addr_mem_tab.end ())
     {
       addr_mem_tab[from] = val;
-      if (nexecuted > warmup && nexecuted - last_dump_nexecuted >= period)
+      if (period == 1)
+        {
+          DumpDetailedState (current_ins_info, from, val);
+        }
+      else if (nexecuted > warmup && nexecuted - last_dump_nexecuted >= period)
         {
           DumpState (current_ins_info);
           last_dump_nexecuted = nexecuted;

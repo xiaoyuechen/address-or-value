@@ -109,6 +109,13 @@ Trace (TRACE trace, void *val)
 }
 
 void
+ImgLoad (IMG img, void *)
+{
+  fprintf (stderr, "%s load offset: %p\n", IMG_Name (img).c_str (),
+           (void *)IMG_LoadOffset (img));
+}
+
+void
 Fini (INT32 code, void *v)
 {
   PG_Fini ();
@@ -121,6 +128,7 @@ main (int argc, char *argv[])
   Init (argc, argv);
 
   TRACE_AddInstrumentFunction (Trace, 0);
+  /* IMG_AddInstrumentFunction (ImgLoad, 0); */
   PIN_AddFiniFunction (Fini, 0);
 
   PIN_StartProgram ();

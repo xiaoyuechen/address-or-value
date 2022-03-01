@@ -16,16 +16,15 @@
  */
 
 #include <stddef.h>
-#include <stdlib.h>
 #include <stdio.h>
+#include <stdlib.h>
 
-static char s[] = "sEcRet";
+static char s[8] = "sEcrEts";
 static unsigned char a[256 * 64];
 
 void
 access ()
 {
-  printf("%p\n", a);
   for (size_t i = 0; i < sizeof (s); ++i)
     {
       asm volatile("movq (%0), %%rax\n" : : "c"(a + s[i] * 64) : "rax");

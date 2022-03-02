@@ -12,8 +12,10 @@
     - Accept user-defined functions to recover secrets
     - Dumping data in a better way. Reduce redundancy. Maybe using
       relational tables?
-    - Propagating into memory
     - Make it easy to use
+    - Write a manual
+    - Propagating into memory
+    - Multi-processing support
 
 * Questions
   - Which of the three options for the stack addresses?
@@ -35,9 +37,9 @@
    addresses. For example, the address ~&b[i]~ should be marked when
    it is used in ~a[b[i]]~.
    - [X] Instrument one function ::
-   - [ ] Store tuples :: ~<pc_ld, pc_use, addr>~
-   - [ ] Instrument the entire program ::
-   - [ ] Multi-theaded program support :: Optional, lower priority
+   - [-] Store tuples :: ~<pc_ld, pc_use, addr>~
+   - [X] Instrument the entire program ::
+   - [-] Multi-theaded program support :: Optional, lower priority
    - [ ] Propagate to memory ::
    - [ ] Control flow marking ::
 

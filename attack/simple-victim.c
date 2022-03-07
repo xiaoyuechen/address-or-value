@@ -18,8 +18,12 @@
 #include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
-static char s[8] = "sEcrEts";
+asm("s_begin:");
+static char s[8];
+asm("s_end:");
+
 static unsigned char a[256 * 64];
 
 void
@@ -32,8 +36,14 @@ access ()
 }
 
 int
-main ()
+main (int argc, char *argv[argc + 1])
 {
+  if (argc > 1)
+    {
+      const char *secret = argv[1];
+      memcpy (s, secret,
+              strlen (secret) < sizeof (s) ? strlen (secret) : sizeof (s));
+    }
   access ();
   exit (EXIT_SUCCESS);
 }

@@ -41,7 +41,7 @@ TOOL_ROOTS := dift-addr
 SA_TOOL_ROOTS :=
 
 # This defines all the applications that will be run during the tests.
-APP_ROOTS := a-b-i fibonacci aos sort
+APP_ROOTS := a-b-i fibonacci aos sort secwatch-demon
 
 # This defines any additional object files that need to be compiled.
 OBJECT_ROOTS :=
@@ -105,6 +105,9 @@ hashset.test: $(OBJDIR)hashset$(EXE_SUFFIX)
 ls.test:
 	$(PIN) -t $(OBJDIR)dift-addr$(PINTOOL_SUFFIX) -o "$@.out" -dumpperiod 10000 -- ls -tal
 
+secwatch-demon.test: $(OBJDIR)secwatch-demon$(EXE_SUFFIX)
+	$(PIN) -t $(OBJDIR)dift-addr$(PINTOOL_SUFFIX) -o "$@.out" -dumpperiod 10000 -- $< sEcRet
+
 
 ##############################################################
 #
@@ -133,3 +136,12 @@ $(OBJDIR)instrument-propagation$(OBJ_SUFFIX) $(OBJDIR)propagation$(OBJ_SUFFIX) $
 .PHONY: plot
 plot:
 	python3 plot.py < dift-addr.out
+
+$(OBJDIR)secwatch$(OBJ_SUFFIX): secwatch.h
+	$(CC) -fPIC -c secwatch.c -o $@
+
+$(OBJDIR)libsecwatch$(PINTOOL_SUFFIX): $(OBJDIR)secwatch$(OBJ_SUFFIX)
+	$(CC) -fPIC -shared -Wl,-soname,libsecwatch$(PINTOOL_SUFFIX) -o $@ $^ -lc
+
+$(OBJDIR)secwatch-demon$(EXE_SUFFIX): secwatch-demon.c $(OBJDIR)libsecwatch$(PINTOOL_SUFFIX)
+	$(CC) -L$(OBJDIR) -lsecwatch -Wl,-rpath='$${ORIGIN}' -o $@ secwatch-demon.c

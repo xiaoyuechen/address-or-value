@@ -25,10 +25,10 @@ instrument-victim: victim
 	LD_LIBRARY_PATH=$${LD_LIBRARY_PATH}:extern/lib pin -t dift-addr.so -dumpperiod 1 -filter_rtn AES_encrypt -- ./victim
 
 run-simple-victim: simple-victim
-	./$<
+	./$< sEcRet
 
 instrument-simple-victim: simple-victim
-	pin -t dift-addr.so -dumpperiod 1 -filter_rtn access -- ./$<
+	pin -t dift-addr.so -dumpperiod 1 -filter_rtn access -- ./$< sEcRet
 
 .PHONY: plot
 plot:

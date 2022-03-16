@@ -20,9 +20,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-asm("s_begin:");
 static char s[8];
-asm("s_end:");
 
 static unsigned char a[256 * 64];
 

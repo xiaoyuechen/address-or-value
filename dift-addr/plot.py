@@ -31,25 +31,16 @@ fig = plt.figure()
 ax = fig.add_subplot(111)
 
 ax.plot(df.executed, df.addr_mem, label='contains memory address')
-ax.plot(df.executed, df.addr_any, label='any seen address')
+# ax.plot(df.executed, df.addr_any, label='any seen address')
 for i, row in df[df["from"].notna()].iterrows():
-    secret_start = int('0x4060', 0)
-    secret_end = secret_start + 8
     from_lt = int(row["from"], 0) - int(row["load_offset"], 0)
-    if from_lt in range(secret_start, secret_end):
-        val_lt = int(row['val'], 0) - int(row['load_offset'], 0)
-        leak = (val_lt - int('0x4080', 0)) // 64
-        ax.annotate(
-            f"{row['from']}\n{hex(from_lt)}\n{row['val']}\n{hex(val_lt)}\n\'{chr(leak)}\'\n",
-            xy=(row["executed"], row["addr_mem"]),
-            fontsize=6,
-            ha='center',
-            color='red')
-    else:
-        ax.annotate(f"{row['from']}\n{row['val']}\n",
-                    xy=(row["executed"], row["addr_mem"]),
-                    fontsize=6,
-                    ha='center')
+    val_lt = int(row['val'], 0) - int(row['load_offset'], 0)
+    leak = (val_lt - int('0x4080', 0)) // 64
+    ax.annotate(
+        f"{row['from']}\n{hex(from_lt)}\n{row['val']}\n{hex(val_lt)}\n\'{chr(leak)}\'\n",
+        xy=(row["executed"], row["addr_mem"]),
+        fontsize=6,
+        ha='center')
 ax.set_xlabel('#ins executed')
 ax.set_ylabel('#addresses')
 ax.legend()

@@ -42,6 +42,12 @@ PG_PROPAGATOR *PG_CreatePropagator ();
 
 void PG_DestroyPropagator (PG_PROPAGATOR *pg);
 
+void PG_SetWatch (PG_PROPAGATOR *pg, bool shouldWatch);
+
+void PG_Watch (PG_PROPAGATOR *pg, void *addr, size_t size);
+
+void PG_Unwatch (PG_PROPAGATOR *pg, void *addr);
+
 void PG_AddToAddressMarkHook (PG_PROPAGATOR *pg, PG_ADDRESS_MARK_FN fn,
                               void *user_ptr);
 

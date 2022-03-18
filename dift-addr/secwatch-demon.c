@@ -19,26 +19,38 @@
  */
 
 #include "secwatch.h"
+#include <stddef.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
-static char s[8];
-
 static unsigned char a[256 * 64];
+static const char s1_str[] = "TOp";
+static const char s2_str[] = "sEcRet";
 
-void access() {
-  for (size_t i = 0; i < sizeof(s); ++i) {
-    asm volatile("movq (%0), %%rax\n" : : "c"(a + s[i] * 64) : "rax");
-  }
+void
+access (char *data, size_t n)
+{
+  for (size_t i = 0; i < n; ++i)
+    {
+      asm volatile("movq (%0), %%rax\n" : : "c"(a + data[i] * 64) : "rax");
+    }
 }
 
-int main(int argc, char *argv[argc + 1]) {
-  if (argc > 1) {
-    const char *secret = argv[1];
-    memcpy(s, secret, strlen(secret) < sizeof(s) ? strlen(secret) : sizeof(s));
-  }
-  SEC_watch(s, 8);
-  access();
-  SEC_unwatch(s);
-  exit(EXIT_SUCCESS);
+int
+main (int argc, char *argv[argc + 1])
+{
+  char *s1 = malloc (sizeof (s1_str));
+  SEC_Watch (s1, sizeof (s1_str));
+  strcpy (s1, s1_str);
+  access (s1, 8);
+  SEC_Unwatch (s1);
+
+  char *s2 = malloc (sizeof (s2_str));
+  SEC_Watch (s2, sizeof (s2_str));
+  strcpy (s2, s2_str);
+  access (s2, 8);
+  SEC_Unwatch (s2);
+
+  exit (EXIT_SUCCESS);
 }

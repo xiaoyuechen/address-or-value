@@ -45,13 +45,43 @@ struct ADDRESS_UNMARK_CALLBACK
 using PG_ADDRESS_MARK_HOOK = std::vector<ADDRESS_MARK_CALLBACK>;
 using PG_ADDRESS_UNMARK_HOOK = std::vector<ADDRESS_UNMARK_CALLBACK>;
 
+struct WATCH_BLOCK
+{
+  void *begin, *end;
+};
+
+constexpr bool
+operator< (WATCH_BLOCK lhs, WATCH_BLOCK rhs)
+{
+  return lhs.begin < rhs.begin;
+}
+
 struct PG_PROPAGATOR
 {
   PG_TAINT_TABLE tt{};
   void *tea[TT_NUM_TAINT] = {};
   PG_ADDRESS_MARK_HOOK addr_mark_hook;
   PG_ADDRESS_UNMARK_HOOK addr_unmark_hook;
+  bool watch = false;
+  std::set<WATCH_BLOCK> watch_set{};
 };
+
+bool
+IsAddressWatched (const PG_PROPAGATOR *pg, void *addr)
+{
+  if (!pg->watch)
+    {
+      return true;
+    }
+
+  auto lub = pg->watch_set.upper_bound (WATCH_BLOCK{ addr, nullptr });
+  auto glb = lub == pg->watch_set.begin () ? lub : --lub;
+  if (glb->begin <= addr && addr < glb->end)
+    {
+      return true;
+    }
+  return false;
+}
 
 PG_PROPAGATOR *
 PG_CreatePropagator ()
@@ -63,6 +93,25 @@ void
 PG_DestroyPropagator (PG_PROPAGATOR *pg)
 {
   delete pg;
+}
+
+void
+PG_SetWatch (PG_PROPAGATOR *pg, bool shouldWatch)
+{
+  pg->watch = shouldWatch;
+}
+
+void
+PG_Watch (PG_PROPAGATOR *pg, void *addr, size_t size)
+{
+  /* TODO: detect overlapping watch */
+  pg->watch_set.insert (WATCH_BLOCK{ addr, (unsigned char *)addr + size });
+}
+
+void
+PG_Unwatch (PG_PROPAGATOR *pg, void *addr)
+{
+  pg->watch_set.erase (WATCH_BLOCK{ addr, nullptr });
 }
 
 void
@@ -137,11 +186,14 @@ PG_PropagateMemToReg (PG_PROPAGATOR *pg, const uint32_t *reg_w, size_t nreg_w,
       tt.Diff (reg_w[i], reg_w[i], reg_w[i]);
     }
 
-  size_t t = tt.NextAvailableTaint ();
-  tea[t] = ea;
-  for (size_t i = 0; i < nreg_w; ++i)
+  if (IsAddressWatched (pg, ea))
     {
-      tt.Taint (reg_w[i], t);
+      size_t t = tt.NextAvailableTaint ();
+      tea[t] = ea;
+      for (size_t i = 0; i < nreg_w; ++i)
+        {
+          tt.Taint (reg_w[i], t);
+        }
     }
 }
 
@@ -164,7 +216,7 @@ PG_PropagateRegToMem (PG_PROPAGATOR *pg, const uint32_t *mem_w, size_t nmem_w,
   InvokeAddressUnmarkCallback (&pg->addr_unmark_hook[0],
                                pg->addr_unmark_hook.size (), ea);
 
-  // TODO: Propagate to stack memory
+  /* TODO: Propagate to stack memory */
 }
 
 void

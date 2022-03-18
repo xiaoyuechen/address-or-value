@@ -106,8 +106,7 @@ ls.test:
 	$(PIN) -t $(OBJDIR)dift-addr$(PINTOOL_SUFFIX) -o "$@.out" -dumpperiod 10000 -- ls -tal
 
 secwatch-demon.test: $(OBJDIR)secwatch-demon$(EXE_SUFFIX)
-	$(PIN) -t $(OBJDIR)dift-addr$(PINTOOL_SUFFIX) -o "$@.out" -dumpperiod 10000 -- $< sEcRet
-
+	$(PIN) -t $(OBJDIR)dift-addr$(PINTOOL_SUFFIX) -watch -o "$@.out" -- $< sEcRet
 
 ##############################################################
 #

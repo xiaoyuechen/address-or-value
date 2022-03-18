@@ -26,18 +26,24 @@
 #include <stddef.h>
 #include <stdio.h>
 
-void PG_Init ();
+void IPG_Init ();
 
-void PG_SetDumpFile (FILE *file);
+void IPG_SetDumpFile (FILE *file);
 
-void PG_SetDumpPeriod (size_t every_nins);
+void IPG_SetDumpPeriod (size_t every_nins);
 
-void PG_SetWarmup (size_t nins);
+void IPG_SetWarmup (size_t nins);
 
-void PG_DumpHeader ();
+void IPG_SetWatch (bool shouldWatch);
 
-void PG_InstrumentPropagation (INS ins);
+void IPG_DumpHeader ();
 
-void PG_Fini ();
+void IPG_InstrumentIns (INS ins);
+
+void IPG_InstrumentWatch (RTN watch);
+
+void IPG_InstrumentUnwatch (RTN unwatch);
+
+void IPG_Fini ();
 
 #endif

@@ -20,6 +20,6 @@
 
 #include "secwatch.h"
 
-void SEC_watch(void *secret, size_t bytes) {}
+void SEC_Watch(void *secret, size_t size) {}
 
-void SEC_unwatch(void *secret) {}
+void SEC_Unwatch(void *secret) {}

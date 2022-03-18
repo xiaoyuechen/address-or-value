@@ -22,6 +22,7 @@
 
 #include "operand.hpp"
 #include "propagation.h"
+#include "types_vmapi.PH"
 #include "util.hpp"
 #include "xed-iclass-enum.h"
 #include "xed-reg-enum.h"
@@ -302,7 +303,7 @@ OnAddrUnmark (void *ea, void *)
 }
 
 void
-PG_Init ()
+IPG_Init ()
 {
   pg = PG_CreatePropagator ();
   PG_AddToAddressMarkHook (pg, OnAddrMark, 0);
@@ -310,31 +311,37 @@ PG_Init ()
 }
 
 void
-PG_SetDumpFile (FILE *file)
+IPG_SetDumpFile (FILE *file)
 {
   out = file;
 }
 
 void
-PG_SetDumpPeriod (size_t every_nins)
+IPG_SetDumpPeriod (size_t every_nins)
 {
   period = every_nins;
 }
 
 void
-PG_SetWarmup (size_t nins)
+IPG_SetWarmup (size_t nins)
 {
   warmup = nins;
 }
 
 void
-PG_DumpHeader ()
+IPG_SetWatch (bool shouldWatch)
+{
+  PG_SetWatch (pg, shouldWatch);
+}
+
+void
+IPG_DumpHeader ()
 {
   DumpHeader ();
 }
 
 void
-PG_InstrumentPropagation (INS ins)
+IPG_InstrumentIns (INS ins)
 {
   if (ins_addr.count ((void *)INS_Address (ins)))
     return;
@@ -414,7 +421,32 @@ PG_InstrumentPropagation (INS ins)
 }
 
 void
-PG_Fini ()
+IPG_InstrumentWatch (RTN watch)
+{
+  RTN_InsertCall (
+      watch, IPOINT_BEFORE, /**/
+      (AFUNPTR)(void (*) (void *, size_t))[](void *addr, size_t size) {
+        PG_Watch (pg, addr, size);
+      },                                /**/
+      IARG_FUNCARG_ENTRYPOINT_VALUE, 0, /**/
+      IARG_FUNCARG_ENTRYPOINT_VALUE, 1, /**/
+      IARG_END);
+}
+
+void
+IPG_InstrumentUnwatch (RTN unwatch)
+{
+  RTN_InsertCall (
+      unwatch, IPOINT_BEFORE, /**/
+      (AFUNPTR)(void (*) (void *))[](void *addr) {
+        PG_Unwatch (pg, addr);
+      },                                /**/
+      IARG_FUNCARG_ENTRYPOINT_VALUE, 0, /**/
+      IARG_END);
+}
+
+void
+IPG_Fini ()
 {
   PG_DestroyPropagator (pg);
 }

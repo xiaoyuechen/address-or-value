@@ -22,9 +22,12 @@
 
 #include "instlib.H"
 #include "instrument-propagation.h"
+#include "util.hpp"
+
 #include <algorithm>
 #include <cstddef>
 #include <cstdio>
+#include <cstring>
 #include <map>
 
 #ifndef NUM_TAINT
@@ -47,6 +50,10 @@ KNOB<size_t> KnobWarmupIns (
 
 KNOB<size_t> KnobDumpPeriod (KNOB_MODE_WRITEONCE, "pintool", "dumpperiod", "1",
                              "Dump every DUMPPERIOD instructions");
+
+KNOB<bool>
+    KnobWatchMode (KNOB_MODE_WRITEONCE, "pintool", "watch", "",
+                   "Watch secret using libsecwatch. Do not track everything");
 
 int
 Usage ()
@@ -86,11 +93,12 @@ Init (int argc, char *argv[])
 
   filter.Activate ();
 
-  PG_Init ();
-  PG_SetDumpFile (out);
-  PG_SetWarmup (KnobWarmupIns.Value ());
-  PG_SetDumpPeriod (KnobDumpPeriod.Value ());
-  PG_DumpHeader ();
+  IPG_Init ();
+  IPG_SetDumpFile (out);
+  IPG_SetWarmup (KnobWarmupIns.Value ());
+  IPG_SetWatch (KnobWatchMode.Value ());
+  IPG_SetDumpPeriod (KnobDumpPeriod.Value ());
+  IPG_DumpHeader ();
 }
 
 void
@@ -103,7 +111,7 @@ Trace (TRACE trace, void *val)
     {
       for (INS ins = BBL_InsHead (bbl); INS_Valid (ins); ins = INS_Next (ins))
         {
-          PG_InstrumentPropagation (ins);
+          IPG_InstrumentIns (ins);
         }
     }
 }
@@ -111,14 +119,30 @@ Trace (TRACE trace, void *val)
 void
 ImgLoad (IMG img, void *)
 {
-  fprintf (stderr, "%s load offset: %p\n", IMG_Name (img).c_str (),
-           (void *)IMG_LoadOffset (img));
+  if (strstr (UT_StripPath (IMG_Name (img).c_str ()), "libsecwatch.so"))
+    {
+      RTN watch = RTN_FindByName (img, "SEC_Watch");
+      if (RTN_Valid (watch))
+        {
+          RTN_Open (watch);
+          IPG_InstrumentWatch (watch);
+          RTN_Close (watch);
+        }
+
+      RTN unwatch = RTN_FindByName (img, "SEC_Unwatch");
+      if (RTN_Valid (unwatch))
+        {
+          RTN_Open (unwatch);
+          IPG_InstrumentUnwatch (unwatch);
+          RTN_Close (unwatch);
+        }
+    }
 }
 
 void
 Fini (INT32 code, void *v)
 {
-  PG_Fini ();
+  IPG_Fini ();
   fclose (out);
 }
 
@@ -128,7 +152,11 @@ main (int argc, char *argv[])
   Init (argc, argv);
 
   TRACE_AddInstrumentFunction (Trace, 0);
-  /* IMG_AddInstrumentFunction (ImgLoad, 0); */
+  if (KnobWatchMode.Value ())
+    {
+      IMG_AddInstrumentFunction (ImgLoad, 0);
+    }
+
   PIN_AddFiniFunction (Fini, 0);
 
   PIN_StartProgram ();

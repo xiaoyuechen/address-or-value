@@ -25,10 +25,13 @@
 #include <cstddef>
 #include <cstdio>
 #include <set>
+#include <unordered_map>
+#include <unordered_set>
 #include <vector>
 
 static constexpr size_t TT_TMP_ROW = TT_NUM_ROW + 1;
 using PG_TAINT_TABLE = TAINT_TABLE<TT_TMP_ROW + 1, TT_NUM_TAINT>;
+using PG_HASH_TAINT_TABLE = HASH_TAINT_TABLE<TT_TMP_ROW + 1, TT_NUM_TAINT>;
 
 struct ADDRESS_MARK_CALLBACK
 {
@@ -59,12 +62,15 @@ operator< (WATCH_BLOCK lhs, WATCH_BLOCK rhs)
 struct PG_PROPAGATOR
 {
   PG_TAINT_TABLE tt{};
+  PG_HASH_TAINT_TABLE htt{};
   void *tea[TT_NUM_TAINT] = {};
   PG_ADDRESS_MARK_HOOK addr_mark_hook;
   PG_ADDRESS_UNMARK_HOOK addr_unmark_hook;
   bool watch = false;
   std::set<WATCH_BLOCK> watch_set{};
 };
+
+void *watch_addr;
 
 bool
 IsAddressWatched (const PG_PROPAGATOR *pg, void *addr)
@@ -74,11 +80,14 @@ IsAddressWatched (const PG_PROPAGATOR *pg, void *addr)
       return true;
     }
 
-  auto lub = pg->watch_set.upper_bound (WATCH_BLOCK{ addr, nullptr });
-  auto glb = lub == pg->watch_set.begin () ? lub : --lub;
-  if (glb->begin <= addr && addr < glb->end)
+  if (!pg->watch_set.empty ())
     {
-      return true;
+      auto lub = pg->watch_set.upper_bound (WATCH_BLOCK{ addr, nullptr });
+      auto glb = lub == pg->watch_set.begin () ? lub : --lub;
+      if (glb->begin <= addr && addr < glb->end)
+        {
+          return true;
+        }
     }
   return false;
 }
@@ -105,6 +114,7 @@ void
 PG_Watch (PG_PROPAGATOR *pg, void *addr, size_t size)
 {
   /* TODO: detect overlapping watch */
+  watch_addr = addr;
   pg->watch_set.insert (WATCH_BLOCK{ addr, (unsigned char *)addr + size });
 }
 
@@ -170,6 +180,7 @@ PG_PropagateMemToReg (PG_PROPAGATOR *pg, const uint32_t *reg_w, size_t nreg_w,
                       const uint32_t *mem_r, size_t nmem_r, void *ea)
 {
   PG_TAINT_TABLE &tt = pg->tt;
+  PG_HASH_TAINT_TABLE &htt = pg->htt;
   void **tea = pg->tea;
 
   for (size_t i = 0; i < nmem_r; ++i)
@@ -177,6 +188,7 @@ PG_PropagateMemToReg (PG_PROPAGATOR *pg, const uint32_t *reg_w, size_t nreg_w,
       if (tt.IsTainted (mem_r[i], t))
         {
           tt.UntaintCol (t);
+          htt.UntaintCol (t);
           InvokeAddressMarkCallback (&pg->addr_mark_hook[0],
                                      pg->addr_mark_hook.size (), tea[t], ea);
         }
@@ -195,6 +207,15 @@ PG_PropagateMemToReg (PG_PROPAGATOR *pg, const uint32_t *reg_w, size_t nreg_w,
           tt.Taint (reg_w[i], t);
         }
     }
+  else if (pg->watch)
+    {
+      for (size_t i = 0; i < nreg_w; ++i)
+        for (size_t t = 0; t < TT_NUM_TAINT; ++t)
+          if (pg->htt.IsTainted (ea, t))
+            {
+              tt.Taint (reg_w[i], t);
+            }
+    }
 }
 
 void
@@ -202,6 +223,7 @@ PG_PropagateRegToMem (PG_PROPAGATOR *pg, const uint32_t *mem_w, size_t nmem_w,
                       const uint32_t *reg_r, size_t nreg_r, void *ea)
 {
   PG_TAINT_TABLE &tt = pg->tt;
+  PG_HASH_TAINT_TABLE &htt = pg->htt;
   void **tea = pg->tea;
 
   for (size_t i = 0; i < nmem_w; ++i)
@@ -213,10 +235,18 @@ PG_PropagateRegToMem (PG_PROPAGATOR *pg, const uint32_t *mem_w, size_t nmem_w,
                                      pg->addr_mark_hook.size (), tea[t], ea);
         }
 
+  if (pg->watch)
+    {
+      for (size_t i = 0; i < nreg_r; ++i)
+        for (size_t t = 0; t < TT_NUM_TAINT; ++t)
+          if (tt.IsTainted (reg_r[i], t))
+            {
+              htt.Taint (ea, t);
+            }
+    }
+
   InvokeAddressUnmarkCallback (&pg->addr_unmark_hook[0],
                                pg->addr_unmark_hook.size (), ea);
-
-  /* TODO: Propagate to stack memory */
 }
 
 void

@@ -142,5 +142,9 @@ $(OBJDIR)secwatch$(OBJ_SUFFIX): secwatch.h
 $(OBJDIR)libsecwatch$(PINTOOL_SUFFIX): $(OBJDIR)secwatch$(OBJ_SUFFIX)
 	$(CC) -fPIC -shared -Wl,-soname,libsecwatch$(PINTOOL_SUFFIX) -o $@ $^ -lc
 
-$(OBJDIR)secwatch-demon$(EXE_SUFFIX): secwatch-demon.c $(OBJDIR)libsecwatch$(PINTOOL_SUFFIX)
-	$(CC) -L$(OBJDIR) -lsecwatch -Wl,-rpath='$${ORIGIN}' -o $@ secwatch-demon.c
+
+$(OBJDIR)secwatch-demon$(OBJ_SUFFIX): secwatch-demon.c
+	$(CC) -g -O0 -mno-sse -c -o $@ $<
+
+$(OBJDIR)secwatch-demon$(EXE_SUFFIX): $(OBJDIR)secwatch-demon.o $(OBJDIR)libsecwatch$(PINTOOL_SUFFIX)
+	$(CC) -L$(OBJDIR) -lsecwatch -Wl,-rpath='$${ORIGIN}' -o $@ $<

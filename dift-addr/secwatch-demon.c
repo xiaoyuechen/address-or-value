@@ -24,12 +24,10 @@
 #include <stdlib.h>
 #include <string.h>
 
-static unsigned char a[256 * 64];
-static const char s1_str[] = "TOp";
-static const char s2_str[] = "sEcRet";
+const unsigned char a[256 * 64];
 
-void
-access (char *data, size_t n)
+static void
+access (const char *data, size_t n)
 {
   for (size_t i = 0; i < n; ++i)
     {
@@ -40,17 +38,21 @@ access (char *data, size_t n)
 int
 main (int argc, char *argv[argc + 1])
 {
-  char *s1 = malloc (sizeof (s1_str));
-  SEC_Watch (s1, sizeof (s1_str));
-  strcpy (s1, s1_str);
-  access (s1, 8);
-  SEC_Unwatch (s1);
+  char s[16];
+  memcpy (s, argv[1], strlen (argv[1]));
+  SEC_Watch (s, sizeof (s));
+  /* access (s, sizeof (s)); */
 
-  char *s2 = malloc (sizeof (s2_str));
-  SEC_Watch (s2, sizeof (s2_str));
-  strcpy (s2, s2_str);
-  access (s2, 8);
-  SEC_Unwatch (s2);
+  char s1[16];
+  memset (s1, 66, 8);
+  memcpy (s1 + 8, s, 8);
+  access (s1, sizeof (s1));
+
+  /* char s2[32]; */
+  /* memset (s2, 666, 16); */
+  /* memcpy (s2 + 16, s1, 16); */
+
+  SEC_Unwatch (s);
 
   exit (EXIT_SUCCESS);
 }

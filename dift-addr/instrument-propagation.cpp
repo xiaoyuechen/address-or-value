@@ -22,7 +22,6 @@
 
 #include "operand.hpp"
 #include "propagation.h"
-#include "types_vmapi.PH"
 #include "util.hpp"
 #include "xed-iclass-enum.h"
 #include "xed-reg-enum.h"
@@ -418,6 +417,11 @@ IPG_InstrumentIns (INS ins)
                       IARG_UINT32, regs.reg_r.data[0], /**/
                       IARG_END);
     }
+
+  /* INS_InsertCall ( */
+  /*     ins, IPOINT_BEFORE, */
+  /*     (AFUNPTR)[] { PrintPropagateDebugMsg (current_ins_info); }, IARG_END);
+   */
 }
 
 void

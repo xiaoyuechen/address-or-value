@@ -27,12 +27,14 @@
 #include <cstddef>
 #include <sstream>
 #include <string>
+#include <unordered_map>
 
 template <size_t NUM_ROW, size_t NUM_TAINT> class TAINT_TABLE
 {
 public:
   using ROW = size_t;
   using TAINT = size_t;
+  using TAINT_SET = std::bitset<NUM_TAINT>;
 
   bool
   IsTainted (ROW row, TAINT taint) const
@@ -148,10 +150,64 @@ public:
   }
 
 private:
-  std::bitset<NUM_TAINT> table_[NUM_ROW]{};
+  TAINT_SET table_[NUM_ROW]{};
   size_t time_ = 0;
   size_t timestamp_[NUM_TAINT]{};
   size_t exhaustion_count_ = 0;
+};
+
+template <size_t NUM_ROW, size_t NUM_TAINT> class HASH_TAINT_TABLE
+{
+public:
+  using ROW = void *;
+  using TAINT = size_t;
+  using TAINT_SET = std::bitset<NUM_TAINT>;
+
+  bool
+  IsTainted (ROW row, TAINT taint) const
+  {
+    auto it = table_.find (row);
+    if (it != table_.end ())
+      {
+        return it->second[taint];
+      }
+
+    return false;
+  }
+
+  void
+  Taint (ROW row, TAINT taint)
+  {
+    table_[row][taint] = true;
+  }
+
+  void
+  Untaint (ROW row, TAINT taint)
+  {
+    auto it = table_.find (row);
+    if (it == table_.end ())
+      return;
+
+    it->second[taint] = false;
+    if (it->second.none ())
+      {
+        table_.erase (it);
+      }
+  }
+
+  void
+  UntaintCol (TAINT taint)
+  {
+    assert (taint < NUM_TAINT);
+
+    for (auto it = table_.begin (); it != table_.end (); ++it)
+      {
+        it->second[taint] = false;
+      }
+  }
+
+private:
+  std::unordered_map<void *, TAINT_SET> table_{};
 };
 
 #endif

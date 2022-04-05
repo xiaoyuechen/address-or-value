@@ -5,5 +5,5 @@
   - [[https://github.com/xiaoyuechen/dift-addr][dift-addr]] \\
     A tool that analyses programs' instructions at run-time to track
     values that leak as memory addresses.
-  - [[https://github.com/xiaoyuechen/dift-addr][writing]] \\
+  - [[https://github.com/xiaoyuechen/address-or-value-writing][writing]] \\
     The writing for the thesis and SEED 2022 paper.

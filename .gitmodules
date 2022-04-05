@@ -1,3 +1,6 @@
 [submodule "dift-addr"]
 	path = dift-addr
 	url = git@github.com:xiaoyuechen/dift-addr.git
+[submodule "writing"]
+	path = writing
+	url = git@github.com:xiaoyuechen/address-or-value-writing.git

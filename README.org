@@ -1,0 +1,9 @@
+* Address or value?
+  This repository contains Xiaoyue Chen's Master's thesis. There are 2
+  submodules
+
+  - [[file:dift-addr]] \\
+    A tool that analyses programs' instructions at run-time to track
+    values that leak as memory addresses.
+  - [[file:writing]] \\
+    The writing for the thesis and SEED 2022 paper.
